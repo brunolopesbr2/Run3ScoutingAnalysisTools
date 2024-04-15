@@ -566,7 +566,8 @@ void ScoutingTreeMakerRun3Monitor::endJob() {
 
 void ScoutingTreeMakerRun3Monitor::beginRun(edm::Run const& iRun, edm::EventSetup const& iSetup) {
     // HLT paths
-    triggerPathsVector.push_back("DST_Run3_PFScoutingPixelTracking_v*");
+    //triggerPathsVector.push_back("DST_Run3_PFScoutingPixelTracking_v*");
+    triggerPathsVector.push_back("DST_PFScouting_DoubleMuon_v*");
 
     HLTConfigProvider hltConfig;
     bool changedConfig = false;

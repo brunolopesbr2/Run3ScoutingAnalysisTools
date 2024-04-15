@@ -15,24 +15,33 @@ process.maxEvents = cms.untracked.PSet(
 
 process.source = cms.Source("PoolSource",                            
                             fileNames = cms.untracked.vstring(
-                                #"/store/data/Run2022F/ScoutingPFMonitor/MINIAOD/PromptReco-v1/000/361/971/00000/6c45ebf6-052c-456f-b085-1def7f38830c.root",
-                                #"/store/data/Run2022F/ScoutingPFMonitor/MINIAOD/PromptReco-v1/000/361/971/00000/2629b39a-a626-4774-be78-e1e6783b755c.root",
-                                #"/store/data/Run2022F/ScoutingPFMonitor/MINIAOD/PromptReco-v1/000/361/971/00000/6c45ebf6-052c-456f-b085-1def7f38830c.root",
-                                #"/store/data/Run2022F/ScoutingPFMonitor/MINIAOD/PromptReco-v1/000/361/971/00000/71a94f03-6acf-46fb-af77-5e29709199c3.root",
-                                #"/store/data/Run2022F/ScoutingPFMonitor/MINIAOD/PromptReco-v1/000/362/167/00000/22266449-6097-4832-9eef-92c0c5e0f8dc.root",
-                                #"/store/data/Run2022F/ScoutingPFMonitor/MINIAOD/PromptReco-v1/000/362/167/00000/27f02c1d-04d6-4af3-bf91-9fb5ba828997.root",
-                                #"/store/data/Run2022F/ScoutingPFMonitor/MINIAOD/PromptReco-v1/000/362/167/00000/5e0ec603-8813-4227-9dc4-95b46e987588.root"
                                 #
-                                "/store/data/Run2023C/ScoutingPFMonitor/MINIAOD/PromptReco-v4/000/368/823/00000/cccd7032-a259-4e60-a21b-1b88c041c769.root",
+                                #"/store/data/Run2023C/ScoutingPFMonitor/MINIAOD/PromptReco-v4/000/368/823/00000/cccd7032-a259-4e60-a21b-1b88c041c769.root",
+                                #
+                                "/store/data/Run2024B/ScoutingPFMonitor/MINIAOD/PromptReco-v1/000/379/349/00000/873bebf4-3f0d-40f4-abf1-c765b914d2fb.root",
+                                "/store/data/Run2024B/ScoutingPFMonitor/MINIAOD/PromptReco-v1/000/379/349/00000/90dabf21-60f0-4375-a84c-6f20094a8487.root"
                             ),
                             secondaryFileNames=cms.untracked.vstring(
-                                #"/store/data/Run2022F/ScoutingPFMonitor/RAW/v1/000/361/971/00000/ba851896-96bc-4c21-b45a-dcb8ac57e272.root",
-                                #"/store/data/Run2022F/ScoutingPFMonitor/RAW/v1/000/362/167/00000/bce2e687-410b-4a10-bbed-60c82d5ddf40.root"),
                                 #
-                                "/store/data/Run2023C/ScoutingPFMonitor/RAW/v1/000/368/823/00000/388bf0bd-900f-410a-864c-b77b243d11ff.root",
-                                "/store/data/Run2023C/ScoutingPFMonitor/RAW/v1/000/368/823/00000/9da4e47e-8e12-4a7e-8c71-88458eef0563.root",
-                                "/store/data/Run2023C/ScoutingPFMonitor/RAW/v1/000/368/823/00000/66c984ff-6f83-4c2e-9c77-34b6714fe479.root"
-                            ),
+                                #"/store/data/Run2023C/ScoutingPFMonitor/RAW/v1/000/368/823/00000/388bf0bd-900f-410a-864c-b77b243d11ff.root",
+                                #"/store/data/Run2023C/ScoutingPFMonitor/RAW/v1/000/368/823/00000/9da4e47e-8e12-4a7e-8c71-88458eef0563.root",
+                                #"/store/data/Run2023C/ScoutingPFMonitor/RAW/v1/000/368/823/00000/66c984ff-6f83-4c2e-9c77-34b6714fe479.root"
+                                #
+                                "/store/data/Run2024B/ScoutingPFMonitor/RAW/v1/000/379/349/00000/a6d83181-92fb-4acb-8c5e-21dcd9ddfaeb.root",
+                                "/store/data/Run2024B/ScoutingPFMonitor/RAW/v1/000/379/349/00000/958dfea7-21d3-4096-91b0-c2c2a49dcd2d.root",
+                                "/store/data/Run2024B/ScoutingPFMonitor/RAW/v1/000/379/349/00000/7abcadd0-245f-4f5b-8cbe-1e088adc3c52.root",
+                                "/store/data/Run2024B/ScoutingPFMonitor/RAW/v1/000/379/349/00000/fa791d1b-0298-45f5-88f4-3c5ed3faddf1.root",
+                                "/store/data/Run2024B/ScoutingPFMonitor/RAW/v1/000/379/349/00000/b7ceb3c4-fa26-4b73-a49e-c0f05c4310e4.root",
+                                "/store/data/Run2024B/ScoutingPFMonitor/RAW/v1/000/379/349/00000/bbc11c95-c875-485f-8606-4c1e1d03b0a8.root",
+                                "/store/data/Run2024B/ScoutingPFMonitor/RAW/v1/000/379/349/00000/ad2e8e3b-d43f-4645-92e8-b08f5f5c471a.root",
+                                "/store/data/Run2024B/ScoutingPFMonitor/RAW/v1/000/379/349/00000/2b70d8f6-4b70-4287-861d-a13f5022c71f.root",
+                                "/store/data/Run2024B/ScoutingPFMonitor/RAW/v1/000/379/349/00000/8b2996d4-9681-4e9d-affa-81ac67ce3d05.root",
+                                "/store/data/Run2024B/ScoutingPFMonitor/RAW/v1/000/379/349/00000/88a849cf-8006-4a6b-9868-948bb58efeea.root",
+                                "/store/data/Run2024B/ScoutingPFMonitor/RAW/v1/000/379/349/00000/84fab1ba-6f4f-42e3-8e54-fab0e2f31bd2.root",
+                                "/store/data/Run2024B/ScoutingPFMonitor/RAW/v1/000/379/349/00000/4c47f057-5b4d-4388-aa77-af39f7a8c69f.root",
+                                "/store/data/Run2024B/ScoutingPFMonitor/RAW/v1/000/379/349/00000/c5e89878-3c49-4385-af06-1d0ce9ded0eb.root",
+                                "/store/data/Run2024B/ScoutingPFMonitor/RAW/v1/000/379/349/00000/9dfd4a46-45ee-40e8-97c4-0ddd5be8269e.root"
+                                ),
                             lumisToProcess = cms.untracked.VLuminosityBlockRange('368823:3-368823:35')
                             #lumisToProcess = cms.untracked.VLuminosityBlockRange('361971:2303-361971:2327','362167:87-362167:96')
 )
@@ -52,13 +61,15 @@ process.TFileService = cms.Service("TFileService",
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 from Configuration.AlCa.GlobalTag import GlobalTag
 #process.GlobalTag = GlobalTag(process.GlobalTag, '124X_dataRun3_Prompt_v4', '') # Run 3 2022
-process.GlobalTag = GlobalTag(process.GlobalTag, '132X_dataRun3_Prompt_v2', '') # Run 3 2023
+#process.GlobalTag = GlobalTag(process.GlobalTag, '132X_dataRun3_Prompt_v2', '') # Run 3 2023
+process.GlobalTag = GlobalTag(process.GlobalTag, '140X_dataRun3_Prompt_v1', '') # Run 3 2024
 
-L1Seeds = ["L1_DoubleMu_12_5","L1_DoubleMu_15_7","L1_DoubleMu0er1p4_SQ_OS_dR_Max1p4", "L1_DoubleMu0er1p5_SQ_OS_dR_Max1p4", "L1_DoubleMu4p5er2p0_SQ_OS_Mass_Min7","L1_DoubleMu4p5er2p0_SQ_OS_Mass_7to18","L1_DoubleMu4_SQ_OS_dR_Max1p2","L1_DoubleMu4p5_SQ_OS_dR_Max1p2", "L1_DoubleMu8_SQ"]
+#L1Seeds = ["L1_DoubleMu_12_5","L1_DoubleMu_15_7","L1_DoubleMu0er1p4_SQ_OS_dR_Max1p4", "L1_DoubleMu0er1p5_SQ_OS_dR_Max1p4", "L1_DoubleMu4p5er2p0_SQ_OS_Mass_Min7","L1_DoubleMu4p5er2p0_SQ_OS_Mass_7to18","L1_DoubleMu4_SQ_OS_dR_Max1p2","L1_DoubleMu4p5_SQ_OS_dR_Max1p2", "L1_DoubleMu8_SQ"]
 #L1Seeds = ["L1_DoubleMu_12_5","L1_DoubleMu_15_7","L1_DoubleMu4p5er2p0_SQ_OS_Mass_Min7","L1_DoubleMu4p5er2p0_SQ_OS_Mass_7to18","L1_DoubleMu4_SQ_OS_dR_Max1p2","L1_DoubleMu4p5_SQ_OS_dR_Max1p2", "L1_SingleLooseIsoEG28er2p1", "L1_SingleLooseIsoEG28er1p5", "L1_SingleLooseIsoEG30er1p5", "L1_SingleIsoEG30er2p1", "L1_SingleIsoEG32er2p1", "L1_DoubleEG_LooseIso16_LooseIso12_er1p5", "L1_DoubleEG_LooseIso18_LooseIso12_er1p5", "L1_DoubleEG_LooseIso20_LooseIso12_er1p5", "L1_DoubleEG_LooseIso22_LooseIso12_er1p5", "L1_SingleJet180", "L1_SingleJet200", "L1_DoubleJet30er2p5_Mass_Min300_dEta_Max1p5", "L1_DoubleJet30er2p5_Mass_Min330_dEta_Max1p5", "L1_DoubleJet30er2p5_Mass_Min360_dEta_Max1p5", "L1_HTT280er", "L1_HTT320er", "L1_HTT360er", "L1_ETT2000"]
 
-L1MonitorSeeds = ["L1_SingleMu22","L1_SingleMu25","L1_HTT200er","L1_HTT255er","L1_HTT280er","L1_HTT320er","L1_HTT360er","L1_HTT400er","L1_HTT450er","L1_ETT2000", "L1_HTT280er_QuadJet_70_55_40_35_er2p5","L1_HTT320er_QuadJet_80_60_er2p1_45_40_er2p3", "L1_HTT320er_QuadJet_80_60_er2p1_50_45_er2p3","L1_SingleEG34er2p5", "L1_SingleEG36er2p5","L1_SingleEG38er2p5","L1_SingleEG40er2p5","L1_SingleJet160er2p5","L1_SingleJet180","L1_SingleJet200","L1_SingleTau120er2p1","L1_SingleTau130er2p1","L1_SingleEG42er2p5","L1_SingleEG45er2p5","L1_SingleEG60", "L1_DoubleEG_LooseIso18_LooseIso12_er1p5","L1_DoubleEG_LooseIso20_LooseIso12_er1p5","L1_DoubleEG_LooseIso22_LooseIso12_er1p5"]
+L1Seeds = ["L1_DoubleMu_12_5","L1_DoubleMu_15_7","L1_DoubleMu4p5er2p0_SQ_OS_Mass_Min7","L1_DoubleMu4p5er2p0_SQ_OS_Mass_7to18","L1_DoubleMu8_SQ","L1_DoubleMu0er1p4_SQ_OS_dEta_Max1p2","L1_DoubleMu4er2p0_SQ_OS_dR_Max1p6","L1_DoubleMu5_SQ_OS_dR_Max1p6","L1_DoubleMu3er2p0_SQ_OS_dR_Max1p6","L1_DoubleMu0er1p5_SQ_OS_dEta_Max1p2","L1_DoubleMu0er2p0_SQ_OS_dEta_Max1p6","L1_DoubleMu0er1p4_OQ_OS_dEta_Max1p6","L1_DoubleMu0er2p0_SQ_OS_dEta_Max1p5","L1_DoubleMu0er1p4_SQ_OS_dR_Max1p4","L1_DoubleMu0er1p5_SQ_OS_dR_Max1p4","L1_DoubleMu4p5_SQ_OS_dR_Max1p2","L1_DoubleMu4_SQ_OS_dR_Max1p2","L1_DoubleMu0_Upt15_Upt7","L1_DoubleMu0_Upt6_IP_Min1_Upt4","L1_DoubleMu6_Upt6_SQ_er2p0","L1_DoubleMu7_Upt7_SQ_er2p0","L1_DoubleMu8_Upt8_SQ_er2p0","L1_DoubleMu0er2p0_SQ_dEta_Max1p6","L1_DoubleMu0er2p0_SQ_dEta_Max1p5"]
 
+L1MonitorSeeds = ["L1_SingleMu22","L1_SingleMu25","L1_HTT200er","L1_HTT255er","L1_HTT280er","L1_HTT320er","L1_HTT360er","L1_HTT400er","L1_HTT450er","L1_ETT2000", "L1_HTT280er_QuadJet_70_55_40_35_er2p5","L1_HTT320er_QuadJet_80_60_er2p1_45_40_er2p3", "L1_HTT320er_QuadJet_80_60_er2p1_50_45_er2p3","L1_SingleEG34er2p5", "L1_SingleEG36er2p5","L1_SingleEG38er2p5","L1_SingleEG40er2p5","L1_SingleJet160er2p5","L1_SingleJet180","L1_SingleJet200","L1_SingleTau120er2p1","L1_SingleTau130er2p1","L1_SingleEG42er2p5","L1_SingleEG45er2p5","L1_SingleEG60", "L1_DoubleEG_LooseIso18_LooseIso12_er1p5","L1_DoubleEG_LooseIso20_LooseIso12_er1p5","L1_DoubleEG_LooseIso22_LooseIso12_er1p5"]
 #L1MonitorSeeds = ["L1_HTT200er","L1_HTT255er","L1_HTT280er","L1_HTT320er","L1_HTT360er","L1_HTT400er","L1_HTT450er","L1_ETT2000","L1_SingleJet180","L1_SingleJet200","L1_DoubleJet30er2p5_Mass_Min300_dEta_Max1p5","L1_DoubleJet30er2p5_Mass_Min330_dEta_Max1p5","L1_DoubleJet30er2p5_Mass_Min360_dEta_Max1p5","L1_SingleLooseIsoEG28er2p1","L1_SingleLooseIsoEG28er1p5","L1_SingleLooseIsoEG30er1p5","L1_SingleIsoEG28er2p1","L1_SingleIsoEG30er2p1","L1_SingleIsoEG32er2p1","L1_DoubleEG_LooseIso16_LooseIso12_er1p5","L1_DoubleEG_LooseIso18_LooseIso12_er1p5","L1_DoubleEG_LooseIso20_LooseIso12_er1p5","L1_DoubleEG_LooseIso22_LooseIso12_er1p5"]
 
 process.scoutingTree = cms.EDAnalyzer('ScoutingTreeMakerRun3Monitor',
@@ -70,7 +81,7 @@ process.scoutingTree = cms.EDAnalyzer('ScoutingTreeMakerRun3Monitor',
                                       doL1 = cms.bool( True ),
                                       l1Seeds           = cms.vstring(L1Seeds),
                                       l1MonitorSeeds    = cms.vstring(L1MonitorSeeds),
-                                      muons             = cms.InputTag("hltScoutingMuonPacker","","HLT"),
+                                      muons             = cms.InputTag("hltScoutingMuonPackerNoVtx","","HLT"),
                                       offlineMuons      = cms.untracked.InputTag("slimmedMuons"),
                                       electrons         = cms.InputTag("hltScoutingEgammaPacker"),
                                       offlinePhotons    = cms.untracked.InputTag("slimmedPhotons"),
@@ -79,7 +90,7 @@ process.scoutingTree = cms.EDAnalyzer('ScoutingTreeMakerRun3Monitor',
                                       pfjets            = cms.InputTag("hltScoutingPFPacker"),
                                       tracks            = cms.InputTag("hltScoutingTrackPacker"),
                                       primaryVertices   = cms.InputTag("hltScoutingPrimaryVertexPacker","primaryVtx"),
-                                      displacedVertices = cms.InputTag("hltScoutingMuonPacker","displacedVtx"),
+                                      displacedVertices = cms.InputTag("hltScoutingMuonPackerNoVtx","displacedVtx"),
                                       pfMet             = cms.InputTag("hltScoutingPFPacker","pfMetPt"),
                                       pfMetPhi          = cms.InputTag("hltScoutingPFPacker","pfMetPhi"),
                                       rho               = cms.InputTag("hltScoutingPFPacker","rho"),
