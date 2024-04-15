@@ -43,6 +43,7 @@ crab resubmit CRABDIR
 ```
 After having run successfully all jobs, the integrated luminosity corresponding to the processed data can be checked using [brilcalc](https://twiki.cern.ch/twiki/bin/view/CMS/BrilcalcQuickStart) in the following way:
 ``` 
+crab report CRABDIR
 source /cvmfs/cms-bril.cern.ch/cms-lumi-pog/brilws-docker/brilws-env
 brilcalc --version
 brilcalc lumi -i CRABDIR/results/processedLumis.json
