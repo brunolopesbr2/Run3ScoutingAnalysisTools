@@ -1,7 +1,8 @@
 ####################################################################################
 # A script to plot pie charts of the average event size as result of the command:  #
-# > edmEventSize -v rootfilename.root                                              #
-#                                                                                  #
+# > edmEventSize -v rootfilename.root > Ref.txt                                    #
+# Example for running (Ref.txt is provided as example file):                       #
+# > python3 plot_eventsize.py Ref.txt --output Ref.pdf                             #
 # Contact person: Sanu Varghese, Elisa Fontanesi                                   #
 ####################################################################################
 
