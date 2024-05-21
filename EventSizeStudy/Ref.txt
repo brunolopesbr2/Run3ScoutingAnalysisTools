@@ -1,0 +1,24 @@
+
+File /afs/cern.ch/work/e/elfontan/public/TSG_SCOUTING/RoiUpdate/ref_outputScoutingPF.root Events 12900
+Branch Name | Average Uncompressed Size (Bytes/Event) | Average Compressed Size (Bytes/Event) 
+Run3ScoutingTracks_hltScoutingTrackPacker__MYHLT. 11704.5 5470.21
+Run3ScoutingParticles_hltScoutingPFPacker__MYHLT. 21870.3 4808.07
+Run3ScoutingPhotons_hltScoutingEgammaPacker__MYHLT. 3971.82 1436.25
+FEDRawDataCollection_hltFEDSelectorL1__MYHLT. 24989.9 782.64
+Run3ScoutingPFJets_hltScoutingPFPacker__MYHLT. 2052.29 478.879
+Run3ScoutingElectrons_hltScoutingEgammaPacker__MYHLT. 851.685 442.375
+Run3ScoutingVertexs_hltScoutingPrimaryVertexPacker_primaryVtx_MYHLT. 1473.78 335.357
+Run3ScoutingMuons_hltScoutingMuonPackerVtx__MYHLT. 557.953 220.762
+Run3ScoutingMuons_hltScoutingMuonPackerNoVtx__MYHLT. 554.053 218.354
+EventProductProvenance 2377.02 64.2855
+edmTriggerResults_TriggerResults__HLT. 1659.88 43.6899
+EventAuxiliary 113.225 30.2745
+edmTriggerResults_TriggerResults__MYHLT. 368.678 9.49202
+Run3ScoutingVertexs_hltScoutingMuonPackerNoVtx_displacedVtx_MYHLT. 65.9433 8.37504
+double_hltScoutingPFPacker_pfMetPhi_MYHLT. 9.34682 8.11938
+double_hltScoutingPFPacker_pfMetPt_MYHLT. 9.34434 7.8931
+double_hltScoutingPFPacker_rho_MYHLT. 9.33442 7.80186
+Run3ScoutingVertexs_hltScoutingMuonPackerVtx_displacedVtx_MYHLT. 63.802 5.13992
+EventSelections 73.1833 2.93047
+BranchListIndexes 18.1337 2.45915
+

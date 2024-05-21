@@ -126,6 +126,8 @@ private:
   float pt2;
   float eta1;
   float eta2;
+  float phi1;
+  float phi2;
 
   float rho;
   int nMuonsID;
@@ -260,8 +262,8 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
 
       eta1=muonsH->at(idx[0]).eta();
       eta2=muonsH->at(idx[1]).eta();      
-      float phi1=muonsH->at(idx[0]).phi();
-      float phi2=muonsH->at(idx[1]).phi();
+      phi1=muonsH->at(idx[0]).phi();
+      phi2=muonsH->at(idx[1]).phi();
       
       TLorentzVector mu1;
       mu1.SetPtEtaPhiM(pt1,eta1,phi1,0.105658);
@@ -384,6 +386,8 @@ void ScoutingTreeMakerRun3::beginJob() {
     tree->Branch("pt2"                 , &pt2                         , "pt2/F"     );
     tree->Branch("eta1"                , &eta1                        , "eta1/F"    );
     tree->Branch("eta2"                , &eta2                        , "eta2/F"    );
+    tree->Branch("phi1"                , &phi1                        , "phi1/F"    );
+    tree->Branch("phi2"                , &phi2                        , "phi2/F"    );
     tree->Branch("rho"                 , &rho                         , "rho/F"     );
 
     tree->Branch("vtxMatch"            , &vtxMatch                    , "vtxMatch/B");

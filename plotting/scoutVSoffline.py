@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-
-# *****************************
+# ***************************************
 # usage: 
 #    python3 scoutVSoffline.py
-# *****************************
+# ***************************************
 
 import ROOT, array, random, copy
 from ROOT import TCanvas, TFile, TH1, TH1F, TF1, gSystem
@@ -18,24 +17,31 @@ import math
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import os
+import argparse
+import sys
+
+argparser = argparse.ArgumentParser(description='Parser used for non default arguments', formatter_class=argparse.ArgumentDefaultsHelpFormatter, add_help=True)
+argparser.add_argument('--outdir', dest='outdir', default='/eos/user/e/elfontan/www/CMS_SCOUTING/2024', help='Output directory')
+args = argparser.parse_args()
+outputdir = args.outdir
 
 ROOT.gROOT.SetBatch()
 ROOT.gStyle.SetOptStat(0)
 ROOT.gStyle.SetOptTitle(0)
 
-lowmass = True
-fullmass = False
+lowmass = False
+fullmass = True
+#lowmass = True
+#fullmass = False
 
 ######################################
 # List of files and output directory #
 ######################################
 def list_full_paths(directory):
     return [os.path.join(directory, file) for file in os.listdir(directory)]
-files = list_full_paths("/eos/user/e/elfontan/ScoutingParkingPaper/lxy_vtxInfo_Jun26_2022scoutMon")
-#files = list_full_paths("/eos/user/e/elfontan/ScoutingParkingPaper/lxy_May25_2022scoutMon") #DEFAULT
-#files = files[:-1] 
+files = list_full_paths("/eos/user/e/elfontan/2024_SCOUTING/ScoutingPFMonitor/")
+#files = files[:-5] 
 
-outputdir = "/eos/user/e/elfontan/www/ScoutingParkingPaper/lxy_May25_2022scoutMon"
 
 ########################
 # Variables and histos #
@@ -46,24 +52,37 @@ h_pt_res        = TH1F("h_pt_res", "h_pt_res", 400, -0.4, 0.4)
 h_mass_res      = TH1F("h_mass_res", "h_mass_res", 400, -0.4, 0.4) 
 
 if (fullmass):
-    #xbins = [0.215]
-    xbins = [0.3]
+    xbins = [0.215]
+    #xbins = [0.295]
     while (xbins[-1]<250):
         xbins.append(1.01*xbins[-1])
     #print("xbins", xbins)
+    xbins_rebin = [0.215]
+    while (xbins_rebin[-1]<250):
+        xbins_rebin.append(1.05*xbins_rebin[-1])
 if (lowmass):
-    xbins = [0.3]
+    xbins = [0.215]
     while (xbins[-1]<20):
         xbins.append(1.01*xbins[-1])
-    #print("xbins", xbins)
+    print("xbins", xbins)
+    print("len(xbins)", len(xbins))
+    xbins_rebin = [0.215]
+    while (xbins_rebin[-1]<20):
+        xbins_rebin.append(1.05*xbins_rebin[-1])
+    print("xbins_rebin", xbins_rebin)
+    print("len(xbins_rebin)", len(xbins_rebin))
 
 h_mass_offline = TH1F("h_mass_offline", "h_mass_offline", len(xbins)-1,array('f',xbins)) #LOG
 h_mass_scout = TH1F("h_mass_scout", "h_mass_scout", len(xbins)-1,array('f',xbins)) #LOG
+h_mass_offline_reb = TH1F("h_mass_offline_reb", "h_mass_offline_reb", len(xbins_rebin)-1,array('f',xbins_rebin))
+h_mass_scout_reb = TH1F("h_mass_scout_reb", "h_mass_scout_reb", len(xbins_rebin)-1,array('f',xbins_rebin))
 
 if (fullmass):
-    frame = TH1F("frame","",1000,0.3,250.3)
+    frame = TH1F("frame","",1000,0.18,250.2)
+    f_ratio = TH1F("f_ratio","",1000,0.18,250.2)
 elif (lowmass):
-    frame = TH1F("frame","",1000,0.3,20.3)
+    frame = TH1F("frame","",1000,0.18,20.2)
+    f_ratio = TH1F("f_ratio","",1000,0.18,20.2)
 
 # Loop over the files and fill the histo
 print(">>>>>> READING...")
@@ -88,9 +107,9 @@ for filename in files:
       #if (ev.pt1_scout == ev.pt2_scout): continue
       #if (ev.drmm < 0.2): continue 
       #if (ev.drmm < 0.2 or ev.drmm_scout < 0.2): continue 
-      if (ev.dr_matching_1 > 0.1 or ev.dr_matching_2 > 0.1): continue
+      if (ev.dr_matching_1 > 0.2 or ev.dr_matching_2 > 0.2): continue
 
-      if ((ev.l1Result[0]==1 or ev.l1Result[1]==1 or ev.l1Result[2]==1 or ev.l1Result[3]==1 or ev.l1Result[4]==1 or ev.l1Result[5]==1) and ev.ndvtx > 0 ):
+      if ((ev.l1Result[0]==1 or ev.l1Result[1]==1 or ev.l1Result[2]==1 or ev.l1Result[3]==1 or ev.l1Result[4]==1 or ev.l1Result[5]==1 or ev.l1Result[6]==1 or ev.l1Result[7]==1 or ev.l1Result[8]==1 or ev.l1Result[9]==1 or ev.l1Result[10]==1 or ev.l1Result[11]==1 or ev.l1Result[12]==1 or ev.l1Result[13]==1 or ev.l1Result[14]==1 or ev.l1Result[15]==1 or ev.l1Result[16]==1 or ev.l1Result[17]==1 or ev.l1Result[18]==1 or ev.l1Result[19]==1 or ev.l1Result[20]==1 or ev.l1Result[21]==1 or ev.l1Result[22]==1 or ev.l1Result[23]==1) and ev.ndvtx > 0 ):
       #if ((ev.l1Result[0]==1 or ev.l1Result[1]==1 or ev.l1Result[2]==1 or ev.l1Result[3]==1 or ev.l1Result[4]==1 or ev.l1Result[5]==1) and ev.lxy > 0.0):
           #if (ev.mu1_ID[0] and ev.mu2_ID[0] and ev.pfIso1 < 0.25 and ev.pfIso2 < 0.25):
           #print("pt1 = ", ev.pt1, " and pt1_scout = ", ev.pt1_scout)
@@ -102,6 +121,8 @@ for filename in files:
           h_mass_res.Fill((ev.mass_scout - ev.mass)/ev.mass)
           h_mass_offline.Fill(ev.mass)
           h_mass_scout.Fill(ev.mass_scout)
+          h_mass_offline_reb.Fill(ev.mass)
+          h_mass_scout_reb.Fill(ev.mass_scout)
       else:
           continue
     # Close the ROOT file
@@ -110,20 +131,12 @@ for filename in files:
 
 legend = ROOT.TLegend (0.6, 0.6, 0.86, 0.86)
 legend.SetTextSize (0.03)
-legend.AddEntry (h_pt_res, "Uncorrected muons", "L")
+legend.AddEntry (h_pt_res, "Uncorrected muons", "NDC")
 legend.SetLineWidth (0)
 
-# Create a title for the legend
-#title = ROOT.TPaveText(0.65, 0.74, 0.85, 0.92, "NDC")
-#title.AddText("Scouting VS Offline")
-#title.SetFillColor(0)
-#title.SetTextAlign(12)
-#title.SetTextSize(0.04)
-
-#draw CMS and lumi text                                                                                                                                           
-CMS_lumi.writeExtraText = True
-CMS_lumi.lumi_sqrtS      = "2022 (13.6 TeV)"                                                                                                                 
-#CMS_lumi.lumi_sqrtS     = lumiText + " (13.6 TeV)"                                                                                                                 
+CMS_lumi.writeExtraText = True                                                                                                             
+CMS_lumi.extraText      = "Preliminary"
+CMS_lumi.lumi_sqrtS      = "3.1 fb^{-1} (13.6 TeV, 2024)"                                                                                   
 CMS_lumi.cmsTextSize    = 0.6
 CMS_lumi.lumiTextSize   = 0.46
 CMS_lumi.extraOverCmsTextSize = 0.75
@@ -131,11 +144,19 @@ CMS_lumi.relPosX = 0.12
 
 
 # --------------------------------------------------------------------
+#gr_text = ROOT.TPaveText(0.3, 0.78, 0.85, 0.83, "NDC")
+
+gr_text1 = ROOT.TPaveText(0.12, 0.8, 0.7, 0.84, "NDC")
+gr_text1.AddText("Events with two matched muons, #DeltaR_{#mu#mu} > 0.2 and p_{T}^{#mu} > 3 GeV")
+#gr_text1.AddText("Events with two matched muons, #Delta#it{R}_{#it{#mu#mu}} > 0.2 and p_{T}^{#it{#mu}} > 3 GeV")
+gr_text1.SetTextSize(0.032)
+gr_text1.SetFillColor(0)
+
 #leg_mass = ROOT.TLegend (0.15, 0.7, 0.45, 0.88)
-leg_mass = ROOT.TLegend (0.58, 0.7, 0.88, 0.88)
-leg_mass.SetTextSize(0.05)
-leg_mass.AddEntry (h_mass_offline, "Offline muons", "L")
-leg_mass.AddEntry (h_mass_scout, "Scouting muons", "L")
+leg_mass = ROOT.TLegend (0.735, 0.65, 0.88, 0.82)
+leg_mass.SetTextSize(0.037)
+leg_mass.AddEntry (h_mass_offline, "Offline", "F")
+leg_mass.AddEntry (h_mass_scout, "Scouting", "F")
 leg_mass.SetLineWidth (0)
 
 labels = TLatex()
@@ -152,191 +173,198 @@ labels.SetTextSize(0.04)
 labels.SetTextAlign(21)
 
 if (fullmass):
-    c_mass = ROOT.TCanvas("c_mass", "c_mass", 1200, 800)
+    c_mass = ROOT.TCanvas("c_mass", "c_mass", 1200, 1000)
     c_mass.cd()    
-    c_mass.SetLogx()    
-    c_mass.SetLogy()    
     c_mass.SetLeftMargin(0.11)
     c_mass.SetBottomMargin(0.17)
+    
+    pad_main = TPad("pad_main", "pad_main", 0.0, 0.3, 1.0, 1.0)
+    pad_main.SetBottomMargin(0.02)
+    pad_main.SetLogx()    
+    pad_main.SetLogy()    
+    pad_main.Draw()
+    pad_main.cd()
+    
     frame.SetMinimum(10)
-    frame.SetMaximum(10000000)
-    frame.GetXaxis().SetRangeUser(0.31,250.)
-    #h_mass_offline.GetXaxis().SetRangeUser(0.215, 250)
-    #h_mass_scout.GetXaxis().SetRangeUser(0.215,250)
-    #h_mass_offline.GetYaxis().SetRangeUser(10, 10000000)
-    h_mass_offline.GetXaxis().SetLabelOffset(0.02)
-    h_mass_offline.GetXaxis().SetTitleOffset(1.9)
-    h_mass_offline.GetXaxis().SetTitle("m_{#mu#mu} [GeV]")
-    h_mass_offline.GetYaxis().SetTitleOffset(1.5)
-    h_mass_offline.GetYaxis().SetTitle("A.U.")
-
-    frame.GetXaxis().SetLabelOffset(0.02)
+    frame.SetMaximum(1000000)
+    frame.GetXaxis().SetLabelOffset(0.2)
     frame.GetXaxis().SetTitleOffset(1.9)
+    frame.GetYaxis().SetLabelSize(0.05)
+    frame.GetYaxis().SetTitleOffset(0.9)
+    frame.GetYaxis().SetTitleSize(0.05)
     frame.GetXaxis().SetTitle("m_{#mu#mu} [GeV]")
-    frame.GetYaxis().SetTitleOffset(1.5)
-    frame.GetYaxis().SetTitle("A.U.")
+    frame.GetYaxis().SetTitle("Events / MeV")
+
     frame.Draw()
 
-    #h_mass_offline.GetYaxis().SetTitle("0.5 GeV/Event")
-    h_mass_offline.SetLineWidth(4)
-    h_mass_offline.SetLineStyle(8)
-    h_mass_offline.SetLineColor(kOrange-3)
+    h_mass_offline.SetLineWidth(2)
+    h_mass_offline.SetLineColor(kBlue-3)
+    #h_mass_offline.SetLineColor(kOrange-3)
     #h_mass_offline.SetFillColorAlpha(kAzure-9,0.35)
-    h_mass_scout.SetLineWidth(2)
-    h_mass_scout.SetLineColor(kMagenta-7)
-    h_mass_scout.SetFillColorAlpha(kMagenta-9,0.35)
-    h_mass_scout.SetFillStyle(3011)
-    h_mass_scout.Scale(1, "width")
-    h_mass_offline.Scale(1, "width")
-    h_mass_scout.Draw("same hist")
-    h_mass_offline.Draw("same hist")
-
-    [ labels.DrawLatex(masses[m], 1.5*h_mass_offline.GetBinContent(h_mass_offline.FindBin(masses[m])), m) for m in masses ]
-    labels.Draw("same")
-    
-    leg_mass.Draw ("same")
-    CMS_lumi.CMS_lumi(c_mass, 0, 0)
-    c_mass.Update()
-    c_mass.SaveAs(outputdir + "/mass_logXYwidth_TEST.png")
-    c_mass.SaveAs(outputdir + "/mass_logXYwidth_TEST.pdf")
-    
-if (lowmass):
-    c_lowmass = ROOT.TCanvas("c_lowmass", "c_lowmass", 1200, 800)
-    c_lowmass.cd()    
-    c_lowmass.SetLogx()    
-    c_lowmass.SetLogy()    
-    c_lowmass.SetLeftMargin(0.11)
-    c_lowmass.SetBottomMargin(0.17)
-    frame.SetMinimum(100)
-    frame.SetMaximum(10000000)
-    frame.GetXaxis().SetRangeUser(0.35,20.)
-    frame.GetXaxis().SetLabelOffset(0.02)
-    frame.GetXaxis().SetTitleOffset(1.9)
-    frame.GetXaxis().SetTitle("m_{#mu#mu} [GeV]")
-    frame.GetYaxis().SetTitleOffset(1.5)
-    frame.GetYaxis().SetTitle("A.U.")
-    frame.Draw()
-
-    #h_mass_scout.GetYaxis().SetRangeUser(10, 1000000000)
-    h_mass_offline.SetLineWidth(4)
-    h_mass_offline.SetLineStyle(8)
-    h_mass_offline.SetLineColor(kOrange-3)
-    #h_mass_offline.SetFillColorAlpha(kAzure-9,0.35)
-    h_mass_scout.SetLineWidth(2)
-    h_mass_scout.SetLineColor(kMagenta-7)
-    h_mass_scout.SetFillColorAlpha(kMagenta-9,0.35)
-    h_mass_scout.SetFillStyle(3011)
+    h_mass_scout.SetLineWidth(3)
+    h_mass_scout.SetFillColor(kMagenta-9)
+    h_mass_scout.SetLineColor(kMagenta-9)
+    #h_mass_scout.SetFillColorAlpha(kMagenta-9,0.65)
+    h_mass_scout.SetFillStyle(3015)    
+    #h_mass_scout.SetFillStyle(3004)
     h_mass_scout.Scale(1., "width")
     h_mass_offline.Scale(1., "width")
     h_mass_scout.Draw("same hist")
     h_mass_offline.Draw("same hist")
+    frame.Draw("same axis")
     
     [ labels.DrawLatex(masses[m], 1.5*h_mass_offline.GetBinContent(h_mass_scout.FindBin(masses[m])), m) for m in masses ]
     labels.Draw("same")
-    
+    gr_text1.Draw("same")
     leg_mass.Draw ("same")
-    CMS_lumi.CMS_lumi(c_lowmass, 0, 0)
+    CMS_lumi.CMS_lumi(pad_main, 0, 0)
+
+    # Create ratio pad
+    c_mass.cd()  # Go back to the main canvas
+    pad_ratio = TPad("pad_ratio", "pad_ratio", 0.0, 0.0, 1.0, 0.3)
+    pad_ratio.SetTopMargin(0.05)
+    pad_ratio.SetBottomMargin(0.3)
+    pad_ratio.SetTicks()    
+    pad_ratio.SetLogx()    
+    pad_ratio.Draw()
+    pad_ratio.cd()
+        
+    # Compute and draw ratio histogram                     
+    # --------------------------------
+    h_mass_offline_reb.Scale(1., "width")
+    h_mass_scout_reb.Scale(1., "width")
+    h_ratio = h_mass_offline_reb.Clone()
+    h_ratio.Divide(h_mass_scout_reb)                                                                                    
+    
+    h_ratio.SetFillColor(kGray)
+    f_ratio.GetYaxis().SetRangeUser(0.6, 1.4)
+    f_ratio.GetXaxis().SetLabelSize(0.12)
+    f_ratio.GetYaxis().SetLabelSize(0.08)
+    f_ratio.GetXaxis().SetTitleSize(0.12)
+    f_ratio.GetYaxis().SetTitleSize(0.1)
+    f_ratio.GetXaxis().SetTitle("m_{#mu#mu} [GeV]")
+    f_ratio.GetXaxis().SetTitleOffset(1.1)
+    f_ratio.GetYaxis().SetTitle("Offline / Scouting")
+    f_ratio.GetYaxis().SetTitleOffset(0.45)
+    h_ratio.SetBinContent(0, 0)
+
+    f_ratio.GetYaxis().SetNdivisions(505)
+    f_ratio.GetXaxis().SetTickSize(0.06)
+
+    f_ratio.Draw("")
+    h_ratio.Draw("E4 same")
+
+    line_at_one = TLine(0.215, 1, 250.1, 1)
+    line_at_one.SetLineStyle(2)
+    line_at_one.Draw("same")
+    
+    # Update and save canvas
+    c_mass.Update()
+    c_mass.SaveAs(outputdir + "/mass_logXYwidth.png")
+    c_mass.SaveAs(outputdir + "/mass_logXYwidth.pdf")
+    
+if (lowmass):
+    c_lowmass = ROOT.TCanvas("c_lowmass", "c_lowmass", 1200, 1000)
+    c_lowmass.cd()    
+    #c_lowmass.SetLogx()    
+    #c_lowmass.SetLogy()    
+    c_lowmass.SetLeftMargin(0.13)
+    c_lowmass.SetBottomMargin(0.1)
+
+    # Create main pad
+    pad_main = TPad("pad_main", "pad_main", 0.0, 0.3, 1.0, 1.0)
+    pad_main.SetBottomMargin(0.02)
+    pad_main.SetLogx()    
+    pad_main.SetLogy()    
+    pad_main.SetTicks()    
+    pad_main.Draw()
+    pad_main.cd()
+
+    frame.SetMinimum(100)
+    frame.SetMaximum(3000000)
+    #frame.GetXaxis().SetRangeUser(0.3,20.)
+    frame.GetXaxis().SetLabelOffset(0.2)
+    frame.GetXaxis().SetTitleOffset(1.9)
+    #frame.GetYaxis().SetLabelOffset(0.08)
+    frame.GetYaxis().SetLabelSize(0.05)
+    frame.GetYaxis().SetTitleOffset(0.9)
+    frame.GetYaxis().SetTitleSize(0.05)
+    frame.GetXaxis().SetTitle("m_{#mu#mu} [GeV]")
+    #frame.GetXaxis().SetTitle("#it{m}_{#it{#mu#mu}} [GeV]")
+    frame.GetYaxis().SetTitle("Events / MeV")
+    #frame.GetYaxis().SetTickSize(0)
+    #frame.GetYaxis().SetTickLength(0)
+    #frame.GetXaxis().SetTickLength(0.05)  # Length of ticks
+    #frame.GetYaxis().SetTickLength(0.05)  # Length of ticks
+
+    frame.Draw()
+
+    #h_mass_offline.GetYaxis().SetRangeUser(100, 10000000)
+    #h_mass_scout.GetYaxis().SetRangeUser(100, 10000000)
+    h_mass_offline.SetLineWidth(2)
+    #h_mass_offline.SetLineStyle(2)
+    #h_mass_offline.SetLineWidth(3)
+    #h_mass_offline.SetLineStyle(8)
+    h_mass_offline.SetLineColor(kBlue-3)
+    #h_mass_offline.SetLineColor(kOrange-3)
+    #h_mass_offline.SetFillColorAlpha(kAzure-9,0.35)
+    h_mass_scout.SetLineWidth(3)
+    h_mass_scout.SetFillColor(kMagenta-9)
+    h_mass_scout.SetLineColor(kMagenta-9)
+    #h_mass_scout.SetFillColorAlpha(kMagenta-9,0.65)
+    h_mass_scout.SetFillStyle(3015)    
+    #h_mass_scout.SetFillStyle(3004)
+    h_mass_scout.Scale(1., "width")
+    h_mass_offline.Scale(1., "width")
+    h_mass_scout.Draw("same hist")
+    h_mass_offline.Draw("same hist")
+    frame.Draw("same axis")
+    
+    [ labels.DrawLatex(masses[m], 1.5*h_mass_offline.GetBinContent(h_mass_scout.FindBin(masses[m])), m) for m in masses ]
+    labels.Draw("same")
+    gr_text1.Draw("same")
+    leg_mass.Draw ("same")
+    CMS_lumi.CMS_lumi(pad_main, 0, 0)
+
+    # Create ratio pad
+    c_lowmass.cd()  # Go back to the main canvas
+    pad_ratio = TPad("pad_ratio", "pad_ratio", 0.0, 0.0, 1.0, 0.3)
+    pad_ratio.SetTopMargin(0.05)
+    pad_ratio.SetBottomMargin(0.3)
+    pad_ratio.SetTicks()    
+    pad_ratio.SetLogx()    
+    pad_ratio.Draw()
+    pad_ratio.cd()
+        
+    # Compute and draw ratio histogram                     
+    # --------------------------------
+    h_mass_offline_reb.Scale(1., "width")
+    h_mass_scout_reb.Scale(1., "width")
+    h_ratio = h_mass_offline_reb.Clone()
+    h_ratio.Divide(h_mass_scout_reb)                                                                                    
+    
+    h_ratio.SetFillColor(kGray)
+    f_ratio.GetYaxis().SetRangeUser(0.6, 1.4)
+    f_ratio.GetXaxis().SetLabelSize(0.12)
+    f_ratio.GetYaxis().SetLabelSize(0.08)
+    f_ratio.GetXaxis().SetTitleSize(0.12)
+    f_ratio.GetYaxis().SetTitleSize(0.1)
+    f_ratio.GetXaxis().SetTitle("m_{#mu#mu} [GeV]")
+    f_ratio.GetXaxis().SetTitleOffset(1.1)
+    f_ratio.GetYaxis().SetTitle("Offline / Scouting")
+    f_ratio.GetYaxis().SetTitleOffset(0.45)
+    h_ratio.SetBinContent(0, 0)
+
+    f_ratio.GetYaxis().SetNdivisions(505)
+    f_ratio.GetXaxis().SetTickSize(0.06)
+
+    f_ratio.Draw("")
+    h_ratio.Draw("E4 same")
+
+    line_at_one = TLine(0.215, 1, 20.1, 1)
+    line_at_one.SetLineStyle(2)
+    line_at_one.Draw("same")
+    
     c_lowmass.Update()
-    c_lowmass.SaveAs(outputdir + "/lowmass_logXYwidth_TEST.png")
-    c_lowmass.SaveAs(outputdir + "/lowmass_logXYwidth_TEST.pdf")
-
-
-# --------------------------------------------------------------------
-c_pt_res = ROOT.TCanvas("c_pt_res", "c_pt_res", 1000, 800)
-c_pt_res.cd()    
-c_pt_res.SetLogy()    
-c_pt_res.SetBottomMargin(0.17)
-h_pt_res.GetXaxis().SetLabelOffset(0.02)
-h_pt_res.GetXaxis().SetTitleOffset(1.9)
-h_pt_res.GetXaxis().SetTitle("#frac{p_{T}^{scout}-p_{T}^{off}}{p_{T}^{off}} [GeV]")
-h_pt_res.GetYaxis().SetTitleOffset(1.5)
-#h_pt_res.GetYaxis().SetTitle("A.U.")
-h_pt_res.GetYaxis().SetTitle("0.1 GeV/Event")
-h_pt_res.SetLineWidth(2)
-h_pt_res.SetLineColor(kAzure-4)
-h_pt_res.SetFillColorAlpha(kAzure-9,0.35)
-h_pt_res.SetFillStyle(3011)
-h_pt_res.Draw()
-legend.Draw ("same")
-CMS_lumi.CMS_lumi(c_pt_res, 0, 0)
-c_pt_res.Update()
-#c_pt_res.SaveAs(outputdir + "/pt_res_Matching0p1_minLxy_log.png")
-#c_pt_res.SaveAs(outputdir + "/pt_res_Matching0p1_minLxy_log.pdf")
-
-c_mass_res = ROOT.TCanvas("c_mass_res", "c_mass_res", 1000, 800)
-c_mass_res.cd()    
-c_mass_res.SetLogy()    
-c_mass_res.SetBottomMargin(0.17)
-h_mass_res.GetXaxis().SetLabelOffset(0.02)
-h_mass_res.GetXaxis().SetTitleOffset(1.9)
-h_mass_res.GetXaxis().SetTitle("#frac{m_{#mu#mu}^{scout}-m_{#mu#mu}^{off}}{m_{#mu#mu}^{off}} [GeV]")
-#h_mass_res.GetYaxis().SetTitleOffset(1.5)
-h_mass_res.GetYaxis().SetTitle("0.1 GeV/Event")
-h_mass_res.SetLineWidth(2)
-h_mass_res.SetLineColor(kAzure-4)
-h_mass_res.SetFillColorAlpha(kAzure-9,0.35)
-h_mass_res.SetFillStyle(3011)
-h_mass_res.Draw()
-legend.Draw ("same")
-CMS_lumi.CMS_lumi(c_mass_res, 0, 0)
-c_mass_res.Update()
-#c_mass_res.SaveAs(outputdir + "/mass_res_Matching0p1_minLxy_log.png")
-#c_mass_res.SaveAs(outputdir + "/mass_res_Matching0p1_minLxy_log.pdf")
-
-# --------------------------------------------------------------------
-c_pt_res_zoom = ROOT.TCanvas("c_pt_res_zoom", "c_pt_res_zoom", 1000, 800)
-c_pt_res_zoom.cd()    
-c_pt_res_zoom.SetLogy()    
-c_pt_res_zoom.SetBottomMargin(0.17)
-h_pt_res_zoom.GetXaxis().SetLabelOffset(0.02)
-h_pt_res_zoom.GetXaxis().SetTitleOffset(1.9)
-h_pt_res_zoom.GetXaxis().SetTitle("#frac{p_{T}^{scout}-p_{T}^{off}}{p_{T}^{off}} [GeV]")
-h_pt_res_zoom.GetYaxis().SetTitleOffset(1.5)
-#h_pt_res_zoom.GetYaxis().SetTitle("A.U.")
-h_pt_res_zoom.GetYaxis().SetTitle("0.1 GeV/Event")
-h_pt_res_zoom.SetLineWidth(2)
-h_pt_res_zoom.SetLineColor(kAzure-4)
-h_pt_res_zoom.SetFillColorAlpha(kAzure-9,0.35)
-h_pt_res_zoom.SetFillStyle(3011)
-h_pt_res_zoom.Draw()
-legend.Draw ("same")
-CMS_lumi.CMS_lumi(c_pt_res_zoom, 0, 0)
-c_pt_res_zoom.Update()
-#c_pt_res_zoom.SaveAs(outputdir + "/pt_res_zoom_Matching0p1_minLxy_log.png")
-#c_pt_res_zoom.SaveAs(outputdir + "/pt_res_zoom_Matching0p1_minLxy_log.pdf")
-
-c_mass_res_zoom = ROOT.TCanvas("c_mass_res_zoom", "c_mass_res_zoom", 1000, 800)
-c_mass_res_zoom.cd()    
-c_mass_res_zoom.SetLogy()    
-c_mass_res_zoom.SetBottomMargin(0.17)
-h_mass_res_zoom.GetXaxis().SetLabelOffset(0.02)
-h_mass_res_zoom.GetXaxis().SetTitleOffset(1.9)
-h_mass_res_zoom.GetXaxis().SetTitle("#frac{m_{#mu#mu}^{scout}-m_{#mu#mu}^{off}}{m_{#mu#mu}^{off}} [GeV]")
-h_mass_res_zoom.GetYaxis().SetTitleOffset(1.5)
-#h_mass_res_zoom.GetYaxis().SetTitle("A.U.")
-h_mass_res_zoom.GetYaxis().SetTitle("0.1 GeV/Event")
-h_mass_res_zoom.SetLineWidth(2)
-h_mass_res_zoom.SetLineColor(kAzure-4)
-h_mass_res_zoom.SetFillColorAlpha(kAzure-9,0.35)
-h_mass_res_zoom.SetFillStyle(3011)
-h_mass_res_zoom.Draw()
-legend.Draw ("same")
-CMS_lumi.CMS_lumi(c_mass_res_zoom, 0, 0)
-c_mass_res_zoom.Update()
-#c_mass_res_zoom.SaveAs(outputdir + "/mass_res_all_Matching0p1_minLxy_log.png")
-#c_mass_res_zoom.SaveAs(outputdir + "/mass_res_all_Matching0p1_minLxy_log.pdf")
-
-
-###################
-# Files and trees #
-###################
-#f_scoutMuon   = TFile.Open(
-#"root://cmsxrootd.fnal.gov//store/user/elfontan/ScoutingPFMonitor/monitorSkim_13Feb2023_2022/230505_183721/0000/scoutMonitor_998.root"
-#)
-
-#with open('test_scoutMuon.txt', 'r') as f:
-#    # Read the contents of the text file
-#    f_scoutMuon_contents = f.read()
-
-# Split the file contents into a list of file names
-#f_scoutMuon_names = f_scoutMuon_contents.split(',')
+    c_lowmass.SaveAs(outputdir + "/dimuScouting_lowmass.png")
+    c_lowmass.SaveAs(outputdir + "/dimuScouting_lowmass.pdf")

@@ -20,9 +20,18 @@ import matplotlib.colors as mcolors
 import numpy as np
 import os
 import mplhep
+import argparse                                                                                                                                     
+import sys
 
 ROOT.gROOT.SetBatch()
 ROOT.gStyle.SetOptStat(0)
+ROOT.gStyle.SetOptTitle(0)
+argparser = argparse.ArgumentParser(description='Parser used for non default arguments', formatter_class=argparse.ArgumentDefaultsHelpFormatter, add_help=True)
+argparser.add_argument('--outdir', dest='outdir', default='/eos/user/e/elfontan/www/CMS_SCOUTING/2024/', help='Output directory')                       
+args = argparser.parse_args()                                                                                                                              
+outputdir = args.outdir                                                                                                                       
+ROOT.gROOT.SetBatch()                                                                                                                  
+ROOT.gStyle.SetOptStat(0)                                                                                                               
 ROOT.gStyle.SetOptTitle(0)
 
 ######################################
@@ -30,10 +39,9 @@ ROOT.gStyle.SetOptTitle(0)
 ######################################
 def list_full_paths(directory):
     return [os.path.join(directory, file) for file in os.listdir(directory)]
-files = list_full_paths("/eos/user/e/elfontan/ScoutingParkingPaper/lxy_vtxInfo_Jun26_2022scoutMon")
+files = list_full_paths("/eos/user/e/elfontan/2024_SCOUTING/ScoutingPFMonitor/") 
 files = files[:-1] 
 
-outputdir = "/eos/user/e/elfontan/www/ScoutingParkingPaper/resPlots_2022scoutMon/profile"
 
 ########################
 # Variables and histos #
@@ -139,7 +147,7 @@ for filename in files:
       if (ev.drmm < 0.2 or ev.drmm_scout < 0.2): continue                                                                                                            
       if (ev.dr_matching_1 > 0.1 or ev.dr_matching_2 > 0.1): continue
 
-      if ((ev.l1Result[0]==1 or ev.l1Result[1]==1 or ev.l1Result[2]==1 or ev.l1Result[3]==1 or ev.l1Result[4]==1 or ev.l1Result[5]==1) and ndvtx > 0):
+      if ((ev.l1Result[0]==1 or ev.l1Result[1]==1 or ev.l1Result[2]==1 or ev.l1Result[3]==1 or ev.l1Result[4]==1 or ev.l1Result[5]==1 or ev.l1Result[6]==1 or ev.l1Result[7]==1 or ev.l1Result[8]==1 or ev.l1Result[9]==1 or ev.l1Result[10]==1 or ev.l1Result[11]==1 or ev.l1Result[12]==1 or ev.l1Result[13]==1 or ev.l1Result[14]==1 or ev.l1Result[15]==1 or ev.l1Result[16]==1 or ev.l1Result[17]==1 or ev.l1Result[18]==1 or ev.l1Result[19]==1 or ev.l1Result[20]==1 or ev.l1Result[21]==1 or ev.l1Result[22]==1 or ev.l1Result[23]==1) and ev.ndvtx > 0 ):
         if (abs(ev.eta1) > 0.9 and abs(ev.eta1) < 1.9 and abs(ev.eta2) > 0.9 and abs(ev.eta2) < 1.9):
             h_mass_res_zoom_E.Fill((ev.mass_scout - ev.mass)/ev.mass)
         elif(abs(ev.eta1) < 0.9 and abs(ev.eta2) < 0.9):
@@ -223,8 +231,9 @@ legend_E.SetTextSize (0.032)
 legend_E.AddEntry (h_mass_res_zoom_E, "Uncorrected muons (E)", "L")
 legend_E.SetLineWidth (0)
 
-CMS_lumi.writeExtraText = True
-CMS_lumi.lumi_sqrtS      = "2022 (13.6 TeV)"                                                                                                                 
+CMS_lumi.writeExtraText = True                                                                                          
+CMS_lumi.extraText      = "Preliminary"                                                                                               
+CMS_lumi.lumi_sqrtS      = "3.1 fb^{-1} (13.6 TeV, 2024)"
 CMS_lumi.cmsTextSize    = 0.6
 CMS_lumi.lumiTextSize   = 0.46
 CMS_lumi.extraOverCmsTextSize = 0.75

@@ -533,6 +533,8 @@ void ScoutingTreeMakerRun3Monitor::beginJob() {
     tree->Branch("pt2"                 , &pt2                          , "pt2/F");
     tree->Branch("eta1"                , &eta1                         , "eta1/F");
     tree->Branch("eta2"                , &eta2                         , "eta2/F");
+    tree->Branch("phi1"                , &phi1                         , "phi1/F");
+    tree->Branch("phi2"                , &phi2                         , "phi2/F");
     tree->Branch("id1"                 , &id1                          , "id1/I");
     tree->Branch("id2"                 , &id2                          , "id2/I");
     tree->Branch("rho"                 , &rho                          , "rho/F");
