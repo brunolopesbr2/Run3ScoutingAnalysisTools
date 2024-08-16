@@ -108,32 +108,25 @@ private:
 
   TTree* tree;
 
-  float trackIso1;
-  float trackIso2;
-  int nValidPixelHits1;
-  int nValidPixelHits2;
-  int nTrackerLayersWithMeasurement1;
-  int nTrackerLayersWithMeasurement2;
-  float trk_chi21;
-  float trk_chi22;
+  int nPFJetsID;
 
-  bool muonID1;
-  bool muonID2;
-  float mass;
-  float pt;
-  float dr;
-  float pt1;
-  float pt2;
-  float eta1;
-  float eta2;
-  float phi1;
-  float phi2;
+  float ptjet1;
+  float ptjet2;
+  float ptjet3;
+  float ptjet4;
 
-  float rho;
-  int nMuonsID;
+  float etajet1;
+  float etajet2;
+  float etajet3;
+  float etajet4;
+
+  float phijet1;
+  float phijet2;
+  float phijet3;
+  float phijet4;  
 
   bool hasPvtx;
-
+  
   int ndvtx;
   bool isValidVtx;
   float vtxChi2;
@@ -144,9 +137,6 @@ private:
   float vtxYError;
   float vtxZError;
 
-  float Lxy;
-  float LxyErr;
-  float LxySig;
 };
 
 //
@@ -205,202 +195,88 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
   using namespace std;
   using namespace reco;
 
-  Handle<vector<Run3ScoutingMuon> > muonsH;
-  iEvent.getByToken(muonsToken, muonsH);
+  Handle<vector<Run3ScoutingPFJet> > pfjetsH;
+  iEvent.getByToken(pfjetsToken, pfjetsH);
 
-  if (muonsH->size()<2) return;
+  //Require 4 PF Jets
+  if (pfjetsH->size()<4) return;
 
-  int nMuons=0;
-  nMuonsID=0;
   vector<int> idx;
 
   int j=0;
-  for (auto muons_iter = muonsH->begin(); muons_iter != muonsH->end(); ++muons_iter) {
-      //std::cout<<"pt: "<<muons_iter->pt()<<std::endl;                                             
-      //std::cout<<"trkiso: "<<muons_iter->trackIso()<<" pix hits: "<< muons_iter->nValidPixelHits()<<" layers: "<<muons_iter->nTrackerLayersWithMeasurement()<<" trk chi2: "<<muons_iter->trk_chi2()<<std::endl; 
 
-      /*
-      if (muons_iter->pt()>4) {
-          nMuons+=1;
-          if ((muons_iter->trackIso()<0.15) &&
-              (muons_iter->nValidPixelHits()>0) &&
-              (muons_iter->nTrackerLayersWithMeasurement()>5)&&
-              (muons_iter->trk_chi2()<10)) {
-              nMuonsID+=1;
-          }
-      }
-      */
+  //get the PF Jets indices
+  for (auto pfjets_iter = pfjetsH->begin(); pfjets_iter != pfjetsH->end(); ++pfjets_iter) {
 
-      idx.push_back(j);
-      j+=1;
+    idx.push_back(j);
+    j+=1;
   }
+  //Print the number of jets in each event
+  //  std::cout<<std::endl<<idx.size()<<std::endl;
 
-  //std::cout<<std::endl<<idx.size()<<std::endl;
+  if (idx.size()>3){
+    
+    //Get the relevant variables
+    ptjet1 = pfjetsH->at(idx[0]).pt();
+    ptjet2 = pfjetsH->at(idx[1]).pt();
+    ptjet3 = pfjetsH->at(idx[2]).pt();
+    ptjet4 = pfjetsH->at(idx[3]).pt();
 
-  if (idx.size()>1) {
-      //std::cout << "charge: " << (muonsH->at(idx[0]).charge()) << ", " << (muonsH->at(idx[1]).charge()) << std::endl;
-      if ((muonsH->at(idx[0]).charge())*(muonsH->at(idx[1]).charge()) > 0) {
-        return;
-      }
+    etajet1 = pfjetsH->at(idx[0]).eta();
+    etajet2 = pfjetsH->at(idx[1]).eta();
+    etajet3 = pfjetsH->at(idx[2]).eta();
+    etajet4 = pfjetsH->at(idx[3]).eta();
 
-      //muonID1 = (muonsH->at(idx[0]).pt()>4) && (muonsH->at(idx[0]).trackIso()<0.15) && (muonsH->at(idx[0]).nValidPixelHits()>0) && (muonsH->at(idx[0]).trk_chi2()<10);
-      //muonID2 = (muonsH->at(idx[1]).pt()>4) && (muonsH->at(idx[1]).trackIso()<0.15) && (muonsH->at(idx[1]).nValidPixelHits()>0) && (muonsH->at(idx[1]).trk_chi2()<10);
+    phijet1 = pfjetsH->at(idx[0]).phi();
+    phijet2 = pfjetsH->at(idx[1]).phi();
+    phijet3 = pfjetsH->at(idx[2]).phi();
+    phijet4 = pfjetsH->at(idx[3]).phi();
 
-      //std::cout << "ID" << muonID1 << ", " << muonID2 << std::endl;
 
-      trackIso1 = muonsH->at(idx[0]).trackIso();
-      trackIso2 = muonsH->at(idx[1]).trackIso();   
-      nValidPixelHits1 = muonsH->at(idx[0]).nValidPixelHits();
-      nValidPixelHits2 = muonsH->at(idx[1]).nValidPixelHits();
-      nTrackerLayersWithMeasurement1 = muonsH->at(idx[0]).nTrackerLayersWithMeasurement();
-      nTrackerLayersWithMeasurement2 = muonsH->at(idx[1]).nTrackerLayersWithMeasurement();
-      trk_chi21 = muonsH->at(idx[0]).trk_chi2();
-      trk_chi22 = muonsH->at(idx[1]).trk_chi2();
+    
 
-      pt1=muonsH->at(idx[0]).pt();
-      pt2=muonsH->at(idx[1]).pt();
+    l1Result_.clear();
+    if (doL1) {
+        l1GtUtils_->retrieveL1(iEvent,iSetup,algToken_);
+        for( unsigned int iseed = 0; iseed < l1Seeds_.size(); iseed++ ) {
+            bool l1htbit = 0;
+            l1GtUtils_->getFinalDecisionByName(string(l1Seeds_[iseed]), l1htbit);
+            l1Result_.push_back( l1htbit );
+        }
+    }
 
-      eta1=muonsH->at(idx[0]).eta();
-      eta2=muonsH->at(idx[1]).eta();      
-      phi1=muonsH->at(idx[0]).phi();
-      phi2=muonsH->at(idx[1]).phi();
-      
-      TLorentzVector mu1;
-      mu1.SetPtEtaPhiM(pt1,eta1,phi1,0.105658);
+    //Tests about the jets
 
-      TLorentzVector mu2;
-      mu2.SetPtEtaPhiM(pt2,eta2,phi2,0.105658);
-
-      TLorentzVector dimu = mu1+mu2;
-      mass=dimu.M();
-      pt=dimu.Pt();
-      dr=mu1.DeltaR(mu2);
-
-      //std::cout<<"pt: "<<pt1<<", "<<pt2<<", nMuonsID: "<<nMuonsID<<std::endl;
-
-      Handle<double> rhoH;
-      iEvent.getByToken(rhoToken, rhoH);
-      rho=*rhoH;
-
-      Handle<vector<Run3ScoutingVertex> > primaryVerticesH;
-      iEvent.getByToken(primaryVerticesToken, primaryVerticesH);
-
-      std::vector<float> vtxX;
-      std::vector<float> vtxY;
-
-      int npvtx = 0;
-      for (auto vtx_iter = primaryVerticesH->begin(); vtx_iter != primaryVerticesH->end(); ++vtx_iter) {
-        //std::cout<<"primary x: "<<vtx_iter->x() <<" y: "<<  vtx_iter->y()<<" ex: "<<vtx_iter->xError()<<" ey: "<<vtx_iter->yError()<<std::endl;
-        npvtx++;
-        vtxX.push_back(vtx_iter->x());   
-        vtxY.push_back(vtx_iter->y());                
-      }
-
-      hasPvtx = npvtx > 0;
-
-      float avgPrimary[2];
-      avgPrimary[0] = ( vtxX.empty() ) ? 0 : ( std::reduce(vtxX.begin(), vtxX.end(), 0.0) / vtxX.size() );
-      avgPrimary[1] = ( vtxY.empty() ) ? 0 : ( std::reduce(vtxY.begin(), vtxY.end(), 0.0) / vtxY.size() );
-
-      //std::cout << "npvtx: " << npvtx << " avgPrimaryX: " << avgPrimary[0] << " avgPrimaryY: " << avgPrimary[1] << std::endl;
-
-      Handle<vector<Run3ScoutingVertex> > verticesH;
-      iEvent.getByToken(verticesToken, verticesH);
-
-      std::vector<int> vtxIndx1 = (muonsH->at(idx[0])).vtxIndx();
-      std::vector<int> vtxIndx2 = (muonsH->at(idx[1])).vtxIndx();
-
-      //std::cout<<"vtxIndx1 size: "<<vtxIndx1.size()<<" vtxIndx2 size: "<<vtxIndx2.size()<<" num vtx: "<<verticesH->size()<<std::endl;
-      
-      ndvtx = verticesH->size();
-      vtxMatch = vtxIndx1.size() > 0 && vtxIndx2.size() > 0 && vtxIndx1[0] == 0 && vtxIndx2[0] == 0 && ndvtx > 0;
-
-      Lxy=0;
-      LxyErr=0;
-      LxySig=0;
-
-      if (vtxMatch) {
-        auto vtx = verticesH->begin();
-        double dx = (vtx->x()) - avgPrimary[0];
-        double dy = (vtx->y()) - avgPrimary[1];
-
-        //std::cout<<"x: "<<vtx->x()<<" y: "<<vtx->y()<<std::endl;
-
-        vtxChi2 = vtx->chi2();
-        vtxNdof = vtx->ndof();
-        isValidVtx = vtx->isValidVtx();
-
-        vtxXError = vtx->xError();
-        vtxYError = vtx->yError();
-        vtxZError = vtx->zError();
-
-        Lxy = sqrt(dx*dx + dy*dy);
-        LxyErr = sqrt(dx*dx*(vtx->xError())*(vtx->xError()) + dy*dy*(vtx->yError())*(vtx->yError())) / Lxy;
-        LxySig = Lxy/LxyErr;
-      }
-
-      //std::cout<<"Lxy: "<<Lxy<<" LxyErr: "<<LxyErr<<" LxySig: "<<LxySig<<std::endl;
-      
-      l1Result_.clear();
-      if (doL1) {
-          l1GtUtils_->retrieveL1(iEvent,iSetup,algToken_);
-          /*for(unsigned int r = 0; r<100; r++){
-            string name ("empty");
-            bool algoName_ = false;
-            algoName_ = l1GtUtils_->getAlgNameFromBit(i,name);
-            cout << "getAlgNameFromBit = " << algoName_  << endl;
-            cout << "L1 bit number = " << i << " ; L1 bit name = " << name << endl;
-            }*/
-          for( unsigned int iseed = 0; iseed < l1Seeds_.size(); iseed++ ) {
-              bool l1htbit = 0;
-              l1GtUtils_->getFinalDecisionByName(string(l1Seeds_[iseed]), l1htbit);
-              l1Result_.push_back( l1htbit );
-          }
-      }
-
-      //std::cout<<"tree filling with mass: "<<mass<<", pt: "<<pt<<std::endl;
-      tree->Fill();
+    
+    tree->Fill();
+    
   }
 }
 
-// ------------ method called once each job just before starting event loop  ------------
+//Fill the tree with the variables retrieved above
 void ScoutingTreeMakerRun3::beginJob() {
     edm::Service<TFileService> fs;
     tree = fs->make<TTree>("tree"      , "tree");
-    //tree->Branch("muonID1"             , &muonID1                     , "muonID1/B" );
-    //tree->Branch("muonID2"             , &muonID2                     , "muonID2/B" );
+ 
+    tree->Branch("ptjet1"              , &ptjet1                      , "ptjet1/F"      );
+    tree->Branch("ptjet2"              , &ptjet2                      , "ptjet2/F"      ); 
+    tree->Branch("ptjet3"              , &ptjet3                      , "ptjet3/F"      );
+    tree->Branch("ptjet4"              , &ptjet4                      , "ptjet4/F"      );    
 
-    tree->Branch("trackIso1", &trackIso1, "trackIso1/F");
-    tree->Branch("trackIso2", &trackIso2, "trackIso2/F");
-    tree->Branch("nValidPixelHits1", &nValidPixelHits1, "nValidPixelHits1/I");
-    tree->Branch("nValidPixelHits2", &nValidPixelHits2, "nValidPixelHits2/I");
-    tree->Branch("nTrackerLayersWithMeasurement1", &nTrackerLayersWithMeasurement1, "nTrackerLayersWithMeasurement1/I");
-    tree->Branch("nTrackerLayersWithMeasurement2", &nTrackerLayersWithMeasurement2, "nTrackerLayersWithMeasurement2/I");
-    tree->Branch("trk_chi21", &trk_chi21, "trk_chi21/F");
-    tree->Branch("trk_chi22", &trk_chi22, "trk_chi22/F");
+    tree->Branch("etajet1"             , &etajet1                     , "etajet1/F"     );
+    tree->Branch("etajet2"             , &etajet2                     , "etajet2/F"     );
+    tree->Branch("etajet3"             , &etajet3                     , "etajet3/F"     );
+    tree->Branch("etajet4"             , &etajet4                     , "etajet4/F"     );
 
-    tree->Branch("mass"                , &mass                        , "mass/F"    );
-    tree->Branch("pt"                  , &pt                          , "pt/F"      );
-    tree->Branch("dr"                  , &dr                          , "dr/F"      );
-    tree->Branch("pt1"                 , &pt1                         , "pt1/F"     );
-    tree->Branch("pt2"                 , &pt2                         , "pt2/F"     );
-    tree->Branch("eta1"                , &eta1                        , "eta1/F"    );
-    tree->Branch("eta2"                , &eta2                        , "eta2/F"    );
-    tree->Branch("phi1"                , &phi1                        , "phi1/F"    );
-    tree->Branch("phi2"                , &phi2                        , "phi2/F"    );
-    tree->Branch("rho"                 , &rho                         , "rho/F"     );
+    tree->Branch("phijet1"             , &phijet1                     , "phijet1/F"     );
+    tree->Branch("phijet2"             , &phijet2                     , "phijet2/F"     );
+    tree->Branch("phijet3"             , &phijet3                     , "phijet3/F"     );
+    tree->Branch("phijet4"             , &phijet4                     , "phijet4/F"     );
 
-    tree->Branch("vtxMatch"            , &vtxMatch                    , "vtxMatch/B");
-    tree->Branch("vtxChi2"             , &vtxChi2                     , "vtxChi2/F" );
-    tree->Branch("vtxNdof"             , &vtxNdof                     , "vtxNdof/I" );
-    tree->Branch("Lxy"                 , &Lxy                         , "Lxy/F"     );
-    tree->Branch("LxyErr"              , &LxyErr                      , "LxyErr/F"  );
-    tree->Branch("LxySig"              , &LxySig                      , "LxySig/F"  );
-
-    tree->Branch("vtxXError"           , &vtxXError                   , "vtxXError/F");
-    tree->Branch("vtxYError"           , &vtxYError                   , "vtxYError/F");
-    tree->Branch("vtxZError"           , &vtxZError                   , "vtxZError/F");
-
+    //tree->Branch("Lxy"                 , &Lxy                         , "Lxy/F"         );
+    //tree->Branch("LxyErr"              , &LxyErr                      , "LxyErr/F"      );
+    //tree->Branch("LxySig"              , &LxySig                      , "LxySig/F"      );
+    
     tree->Branch("l1Result", "std::vector<bool>"             ,&l1Result_, 32000, 0  );
 }
 
