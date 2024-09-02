@@ -18,7 +18,7 @@ process.source = cms.Source("PoolSource",
         '/store/user/brlopesd/StopStopbarTo2Dbar2D_M-200_CTau-10mm_v1/StopStopbarTo2Dbar2D_M-200_CTau-10mm_v1/240730_165552/0000/GENSIMRAW_3.root',
         '/store/user/brlopesd/StopStopbarTo2Dbar2D_M-200_CTau-10mm_v1/StopStopbarTo2Dbar2D_M-200_CTau-10mm_v1/240730_165552/0000/GENSIMRAW_5.root',
         '/store/user/brlopesd/StopStopbarTo2Dbar2D_M-200_CTau-10mm_v1/StopStopbarTo2Dbar2D_M-200_CTau-10mm_v1/240730_165552/0000/GENSIMRAW_6.root'
- )
+    )
 )
 
 #process.load("Run3ScoutingAnalysisTools.ScoutingFilter.ScoutingFilter_cff")

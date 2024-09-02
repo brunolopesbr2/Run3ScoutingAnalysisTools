@@ -108,7 +108,7 @@ private:
 
   TTree* tree;
 
-  int nPFJetsID;
+  int nPFJets;
 
   float ptjet1;
   float ptjet2;
@@ -137,6 +137,8 @@ private:
   float vtxYError;
   float vtxZError;
 
+  int ntk;
+  std::vector<float> tk_vxy;
 };
 
 //
@@ -189,6 +191,37 @@ ScoutingTreeMakerRun3::~ScoutingTreeMakerRun3() {
 // member functions
 //
 
+// Function to find the mode of a vector 
+int findMode(const vector<int>& nums) 
+{ 
+    // Create an unordered map to store frequency of each 
+    // element 
+    unordered_map<int, int> frequency; 
+  
+    // Iterate through the vector and update frequency of 
+    // each element 
+    for (int num : nums) { 
+        frequency[num]++; 
+    } 
+  
+    // Initialize variables to keep track of mode and its 
+    // frequency 
+    int mode = 0; 
+    int maxFrequency = 0; 
+  
+    // Iterate through the unordered map and find the 
+    // element with maximum frequency 
+    for (const auto& pair : frequency) { 
+        if (pair.second > maxFrequency) { 
+            maxFrequency = pair.second; 
+            mode = pair.first; 
+        } 
+    } 
+  
+    // Return the mode 
+    return mode; 
+} 
+
 // ------------ method called for each event  ------------
 void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
   using namespace edm;
@@ -199,10 +232,10 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
   iEvent.getByToken(pfjetsToken, pfjetsH);
 
   //Require 4 PF Jets
-  if (pfjetsH->size()<4) return;
+  nPFJets = pfjetsH->size();
+  if (nPFJets<4) return;
 
   vector<int> idx;
-
   int j=0;
 
   //get the PF Jets indices
@@ -211,53 +244,108 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
     idx.push_back(j);
     j+=1;
   }
-  //Print the number of jets in each event
-  //  std::cout<<std::endl<<idx.size()<<std::endl;
-
-  if (idx.size()>3){
-    
-    //Get the relevant variables
-    ptjet1 = pfjetsH->at(idx[0]).pt();
-    ptjet2 = pfjetsH->at(idx[1]).pt();
-    ptjet3 = pfjetsH->at(idx[2]).pt();
-    ptjet4 = pfjetsH->at(idx[3]).pt();
-
-    etajet1 = pfjetsH->at(idx[0]).eta();
-    etajet2 = pfjetsH->at(idx[1]).eta();
-    etajet3 = pfjetsH->at(idx[2]).eta();
-    etajet4 = pfjetsH->at(idx[3]).eta();
-
-    phijet1 = pfjetsH->at(idx[0]).phi();
-    phijet2 = pfjetsH->at(idx[1]).phi();
-    phijet3 = pfjetsH->at(idx[2]).phi();
-    phijet4 = pfjetsH->at(idx[3]).phi();
-
 
     
+  //Get the relevant variables
+  ptjet1 = pfjetsH->at(idx[0]).pt();
+  ptjet2 = pfjetsH->at(idx[1]).pt();
+  ptjet3 = pfjetsH->at(idx[2]).pt();
+  ptjet4 = pfjetsH->at(idx[3]).pt();
+  
+  etajet1 = pfjetsH->at(idx[0]).eta();
+  etajet2 = pfjetsH->at(idx[1]).eta();
+  etajet3 = pfjetsH->at(idx[2]).eta();
+  etajet4 = pfjetsH->at(idx[3]).eta();
+  
+  phijet1 = pfjetsH->at(idx[0]).phi();
+  phijet2 = pfjetsH->at(idx[1]).phi();
+  phijet3 = pfjetsH->at(idx[2]).phi();
+  phijet4 = pfjetsH->at(idx[3]).phi();
 
-    l1Result_.clear();
-    if (doL1) {
-        l1GtUtils_->retrieveL1(iEvent,iSetup,algToken_);
-        for( unsigned int iseed = 0; iseed < l1Seeds_.size(); iseed++ ) {
-            bool l1htbit = 0;
-            l1GtUtils_->getFinalDecisionByName(string(l1Seeds_[iseed]), l1htbit);
-            l1Result_.push_back( l1htbit );
-        }
+  //Get the primary vertex information
+  Handle<vector<Run3ScoutingVertex> > primaryVerticesH;
+  iEvent.getByToken(primaryVerticesToken, primaryVerticesH);
+  
+  std::vector<float> vtxX;
+  std::vector<float> vtxY;
+  
+  int npvtx = 0;
+  int k = 0;
+  for (auto vtx_iter = primaryVerticesH->begin(); vtx_iter != primaryVerticesH->end(); ++vtx_iter) {
+    //std::cout<<"primary x: "<<vtx_iter->x() <<" y: "<<  vtx_iter->y()<<" ex: "<<vtx_iter->xError()<<" ey: "<<vtx_iter->yError()<<std::endl;
+    if (primaryVerticesH->at(k).isValidVtx()) {   npvtx++; }
+    k++;
+    vtxX.push_back(vtx_iter->x());   
+    vtxY.push_back(vtx_iter->y());                
+  }
+
+  hasPvtx = npvtx > 0;
+  
+  //  float avgPrimary[2];
+  //avgPrimary[0] = ( vtxX.empty() ) ? 0 : ( std::reduce(vtxX.begin(), vtxX.end(), 0.0) / vtxX.size() );
+  //avgPrimary[1] = ( vtxY.empty() ) ? 0 : ( std::reduce(vtxY.begin(), vtxY.end(), 0.0) / vtxY.size() );
+
+  //std::cout << "npvtx: " << npvtx << " avgPrimaryX: " << avgPrimary[0] << " avgPrimaryY: " << avgPrimary[1] << std::endl;
+
+  //Get info on the other vertices
+
+  //std::cout << npvtx << std::endl;
+
+  
+  Handle<vector<Run3ScoutingTrack> > tracksH;
+  iEvent.getByToken(tracksToken, tracksH);
+
+  int t = 0;
+  float tk_vx;
+  float tk_vy;
+  std::vector<int> vtx_Indices;
+
+  ntk = 0;
+  for (auto tk_iter = tracksH->begin(); tk_iter != tracksH->end(); ++tk_iter) {
+
+    if (tracksH->at(t).tk_vtxInd() != 0 && tracksH->at(t).tk_vtxInd() != -1) {
+      tk_vx = tracksH->at(t).tk_vx();
+      tk_vy = tracksH->at(t).tk_vy();
+      tk_vxy.push_back(sqrt(tk_vx*tk_vx + tk_vy*tk_vy));
+      
+      vtx_Indices.push_back(tracksH->at(t).tk_vtxInd());
+      ntk++;
     }
-
-    //Tests about the jets
-
     
-    tree->Fill();
+    
+    t++;
     
   }
+
+
+  // std::cout << vtx_Indices.size() << std::endl;
+  
+  //std::cout << tk_vxy[0] << std::endl;
+  
+  l1Result_.clear();
+  if (doL1) {
+    l1GtUtils_->retrieveL1(iEvent,iSetup,algToken_);
+    for( unsigned int iseed = 0; iseed < l1Seeds_.size(); iseed++ ) {
+      bool l1htbit = 0;
+      l1GtUtils_->getFinalDecisionByName(string(l1Seeds_[iseed]), l1htbit);
+      l1Result_.push_back( l1htbit );
+    }
+  }
+    
+  //Tests about the jets
+    
+    
+  tree->Fill();
+    
 }
 
 //Fill the tree with the variables retrieved above
 void ScoutingTreeMakerRun3::beginJob() {
     edm::Service<TFileService> fs;
     tree = fs->make<TTree>("tree"      , "tree");
- 
+
+    //tree->Branch("nPFJets"             , &nPFJets                     , "nPFJets/F"     );
+
     tree->Branch("ptjet1"              , &ptjet1                      , "ptjet1/F"      );
     tree->Branch("ptjet2"              , &ptjet2                      , "ptjet2/F"      ); 
     tree->Branch("ptjet3"              , &ptjet3                      , "ptjet3/F"      );
@@ -273,9 +361,15 @@ void ScoutingTreeMakerRun3::beginJob() {
     tree->Branch("phijet3"             , &phijet3                     , "phijet3/F"     );
     tree->Branch("phijet4"             , &phijet4                     , "phijet4/F"     );
 
+    //tree->Branch("npvtx"               , &npvtx                       , "npvtx/I"       );
+    
     //tree->Branch("Lxy"                 , &Lxy                         , "Lxy/F"         );
     //tree->Branch("LxyErr"              , &LxyErr                      , "LxyErr/F"      );
     //tree->Branch("LxySig"              , &LxySig                      , "LxySig/F"      );
+
+
+    tree->Branch("ntk"               , &ntk                       , "ntk/I"       );
+    tree->Branch("tk_vxy",   "std::vector<float>"            ,&tk_vxy);
     
     tree->Branch("l1Result", "std::vector<bool>"             ,&l1Result_, 32000, 0  );
 }
