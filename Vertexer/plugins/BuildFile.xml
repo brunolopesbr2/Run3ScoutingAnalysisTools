@@ -1,8 +1,8 @@
 <use name="FWCore/Framework"/>
 <use name="FWCore/ParameterSet"/>
 <use name="FWCore/PluginManager"/>
-<flags EDM_PLUGIN="1"/>
-
+<use name="TrackingTools/TransientTrack"/>
+<use name="FWCore/Utilities"/>
 <use name="CommonTools/UtilAlgos"/>
 <use name="DataFormats/BeamSpot"/>
 <use name="DataFormats/PatCandidates"/>
@@ -22,4 +22,5 @@
 <use name="SimTracker/Records"/>
 <use name="SimTracker/TrackAssociation"/>
 <use name="TrackingTools/Records"/>
-<use name="TrackingTools/TransientTrack"/>
+
+<flags EDM_PLUGIN="1"/>

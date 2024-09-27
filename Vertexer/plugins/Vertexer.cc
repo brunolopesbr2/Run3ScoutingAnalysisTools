@@ -20,14 +20,24 @@
 #include <memory>
 
 // user include files
+#include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/stream/EDProducer.h"
-
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
-
+#include "FWCore/Utilities/interface/InputTag.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
-#include "FWCore/Utilities/interface/StreamID.h"
+
+#include "FWCore/Utilities/interface/ESGetToken.h"
+#include "DataFormats/Common/interface/ValueMap.h"
+
+#include "DataFormats/Common/interface/Handle.h"
+#include "DataFormats/TrackReco/interface/Track.h"
+#include "DataFormats/TrackReco/interface/TrackFwd.h"
+#include "DataFormats/VertexReco/interface/Vertex.h"
+#include "DataFormats/VertexReco/interface/VertexFwd.h"
+
+
 
 //Scouting data formats
 #include "DataFormats/Scouting/interface/Run3ScoutingElectron.h"
@@ -58,7 +68,7 @@ public:
   ~Vertexer() override;
 
   explicit Vertexer(edm::ParameterSet const& params);
-  static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
+  //static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
 private:
   void beginStream(edm::StreamID) override;
@@ -66,14 +76,19 @@ private:
   void endStream() override;
 
   const edm::EDGetTokenT<std::vector<reco::Track>> seed_tracks_token_;
-  const edm::ESGetToken<TransientTrackBuilder*, TransientTrackRecord> ttkToken_;
+  const edm::ESGetToken<TransientTrackBuilder, TransientTrackRecord> ttkToken_;
+
+  edm::EDPutTokenT<reco::VertexCollection> putToken_;
+
   //void beginRun(edm::Run const&, edm::EventSetup const&) override;
   //void endRun(edm::Run const&, edm::EventSetup const&) override;
   //void beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
   //void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
 
   // ----------member data ---------------------------
+
 };
+
 
 //
 // constants, enums and typedefs
@@ -90,8 +105,8 @@ private:
 Vertexer::Vertexer(edm::ParameterSet const& params)
   :
   seed_tracks_token_(consumes(params.getParameter<edm::InputTag>("seed_tracks_src"))),
-  ttkToken_(esConsumes(edm::ESInputTag{"", "TransientTrackBuilder"})) {}
-
+  ttkToken_(esConsumes<TransientTrackBuilder, TransientTrackRecord>(edm::ESInputTag("", "TransientTrackBuilder"))),
+  putToken_{produces()} {}
 
 Vertexer::~Vertexer() {
   // do anything here that needs to be done at destruction time
@@ -103,6 +118,7 @@ Vertexer::~Vertexer() {
 //
 // member functions
 //
+
 
 std::unique_ptr<KalmanVertexFitter> kv_reco;
 
@@ -118,25 +134,23 @@ std::vector<TransientVertex> kv_reco_dropin(std::vector<reco::TransientTrack> & 
 // ------------ method called to produce the data  ------------
 void Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
-  const TransientTrackBuilder* tt_builder = iSetup.getData(ttkToken_);
+  //Get the Transient Track Builder
+  const edm::ESHandle<TransientTrackBuilder> tt_builder = iSetup.getHandle(ttkToken_);
 
+  //Get the reco tracks from the events
   edm::Handle<std::vector<reco::Track>> seed_track_refs;
   iEvent.getByToken(seed_tracks_token_, seed_track_refs);
 
-
+  //Build transient tracks from reco tracks
   std::vector<reco::TransientTrack> seed_tracks = (*tt_builder).build(seed_track_refs);
-  
-  /*
-  std::vector<reco::TransientTrack> seed_tracks;
-  std::map<reco::Track, size_t> seed_track_ref_map;
 
-  for (const reco::Track& tk : *seed_track_refs) {
-    seed_tracks.push_back(tt_builder->build(tk));
-    seed_track_ref_map[tk] = seed_tracks.size() - 1;
-  }
-  */
-  //const size_t ntk = seed_tracks.size();
-  
+  //Do the vertex fitting
+  reco::VertexCollection new_vertices;
+  for (const TransientVertex& tv : kv_reco_dropin(seed_tracks))
+    new_vertices.push_back(reco::Vertex(tv));
+
+  //Save the vertices
+  iEvent.emplace(putToken_, std::move(new_vertices));
 }
 
 // ------------ method called once each stream before processing any runs, lumis or events  ------------
@@ -181,7 +195,7 @@ Vertexer::endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&
 }
 */
 
-// ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
+/* ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
 void Vertexer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   //The following says we do not know what parameters are allowed so do no validation
   // Please change this to state exactly what you do use, even if it is no parameters
@@ -189,6 +203,7 @@ void Vertexer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
   desc.setUnknown();
   descriptions.addDefault(desc);
 }
+*/
 
 //define this as a plug-in
 DEFINE_FWK_MODULE(Vertexer);
