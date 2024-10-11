@@ -19,6 +19,10 @@
 // system include files
 #include <memory>
 
+#include "FWCore/Framework/interface/one/EDAnalyzer.h"
+#include "FWCore/MessageLogger/interface/MessageLogger.h"
+#include "MagneticField/Engine/interface/MagneticField.h"
+
 // user include files
 #include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/Frameworkfwd.h"
@@ -37,8 +41,6 @@
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
 
-
-
 //Scouting data formats
 #include "DataFormats/Scouting/interface/Run3ScoutingElectron.h"
 #include "DataFormats/Scouting/interface/Run3ScoutingPhoton.h"
@@ -56,6 +58,7 @@
 #include "TrackingTools/Records/interface/TransientTrackRecord.h"
 #include "TrackingTools/TransientTrack/interface/TransientTrack.h"
 #include "TrackingTools/TransientTrack/interface/TransientTrackBuilder.h"
+
 
 using namespace edm;
 
@@ -76,7 +79,7 @@ private:
   void endStream() override;
 
   const edm::EDGetTokenT<std::vector<reco::Track>> seed_tracks_token_;
-  const edm::ESGetToken<TransientTrackBuilder, TransientTrackRecord> ttkToken_;
+  const edm::ESGetToken<TransientTrackBuilder, TransientTrackRecord> token_builder;
 
   edm::EDPutTokenT<reco::VertexCollection> putToken_;
 
@@ -105,52 +108,46 @@ private:
 Vertexer::Vertexer(edm::ParameterSet const& params)
   :
   seed_tracks_token_(consumes(params.getParameter<edm::InputTag>("seed_tracks_src"))),
-  ttkToken_(esConsumes<TransientTrackBuilder, TransientTrackRecord>(edm::ESInputTag("", "TransientTrackBuilder"))),
+  token_builder(esConsumes(edm::ESInputTag("", "TransientTrackBuilder"))),
   putToken_{produces()} {}
 
-Vertexer::~Vertexer() {
-  // do anything here that needs to be done at destruction time
-  // (e.g. close files, deallocate resources etc.)
-  //
-  // please remove this method altogether if it would be left empty
-}
+Vertexer::~Vertexer() {}
 
 //
 // member functions
 //
 
 
-std::unique_ptr<KalmanVertexFitter> kv_reco;
-
-std::vector<TransientVertex> kv_reco_dropin(std::vector<reco::TransientTrack> & ttks) {
-  if (ttks.size() < 2)
-    return std::vector<TransientVertex>();
-  std::vector<TransientVertex> v(1, kv_reco->vertex(ttks));
-  if (v[0].normalisedChiSquared() > 5)
-    return std::vector<TransientVertex>();
-  return v;
-}
-
 // ------------ method called to produce the data  ------------
 void Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
   //Get the Transient Track Builder
-  const edm::ESHandle<TransientTrackBuilder> tt_builder = iSetup.getHandle(ttkToken_);
+  auto const &tt_builder = iSetup.getData(token_builder);
 
   //Get the reco tracks from the events
   edm::Handle<std::vector<reco::Track>> seed_track_refs;
   iEvent.getByToken(seed_tracks_token_, seed_track_refs);
 
   //Build transient tracks from reco tracks
-  std::vector<reco::TransientTrack> seed_tracks = (*tt_builder).build(seed_track_refs);
+  std::vector<reco::TransientTrack> seed_tracks = tt_builder.build(seed_track_refs);
+
+  reco::VertexCollection myvs;
 
   //Do the vertex fitting
-  reco::VertexCollection new_vertices;
-  for (const TransientVertex& tv : kv_reco_dropin(seed_tracks))
-    new_vertices.push_back(reco::Vertex(tv));
+  if (seed_tracks.size() < 2)
+    return;
+  
+  KalmanVertexFitter kv_reco;
+  TransientVertex tv = kv_reco.vertex(seed_tracks);
+  if (tv.normalisedChiSquared() > 5)
+    return;
+  
+  reco::Vertex v(tv);
 
   //Save the vertices
-  iEvent.emplace(putToken_, std::move(new_vertices));
+  myvs.push_back(v);
+  
+  iEvent.emplace(putToken_, std::move(myvs));
 }
 
 // ------------ method called once each stream before processing any runs, lumis or events  ------------
