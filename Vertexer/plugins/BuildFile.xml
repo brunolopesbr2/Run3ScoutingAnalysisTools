@@ -19,7 +19,6 @@
 <use name="RecoVertex/ConfigurableVertexReco"/>
 <use name="RecoVertex/GhostTrackFitter"/>
 <use name="SimGeneral/HepPDTRecord"/>
-<use name="SimTracker/Records"/>
 <use name="SimTracker/TrackAssociation"/>
 <use name="TrackingTools/Records"/>
 
