@@ -74,8 +74,8 @@ public:
   //static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
 private:
-  typedef std::set<reco::Track> track_set;
-  typedef std::vector<reco::Track> track_vec;
+  typedef std::set<reco::TrackRef> track_set;
+  typedef std::vector<reco::TrackRef> track_vec;
 
   void beginStream(edm::StreamID) override;
   void produce(edm::Event&, const edm::EventSetup&) override;
@@ -113,10 +113,10 @@ private:
   VertexDistanceXY vertex_dist_2d;
   VertexDistance3D vertex_dist_3d;
 
-  bool is_track_subset(const std::set<reco::Track> & a, const std::set<reco::Track> & b) {
+  bool is_track_subset(const track_set & a, const track_set & b) const {
     bool is_subset = true;
-    const std::set<reco::Track>& smaller = a.size() <= b.size() ? a : b;
-    const std::set<reco::Track>& bigger = a.size() <= b.size() ? b : a;
+    const track_set& smaller = a.size() <= b.size() ? a : b;
+    const track_set& bigger = a.size() <= b.size() ? b : a;
     
     for (auto t : smaller)
       if (bigger.count(t) < 1) {
@@ -133,10 +133,12 @@ private:
       return vertex_dist_2d.distance(v0, v1);
     else
       return vertex_dist_3d.distance(v0, v1);
-}
+  }
   
   track_set vertex_track_set(const reco::Vertex & v, const double min_weight = 0.5) {
     track_set result;
+
+    //reco::Track track_test;
     
     for (auto it = v.tracks_begin(), ite = v.tracks_end(); it != ite; ++it) {
       const double w = v.trackWeight(*it);
@@ -144,15 +146,20 @@ private:
       assert(use);
 
       if (use) {
-	const auto theTrack = it->castTo<reco::Track>();
-	result.insert(theTrack);
+	const auto theTrackRef = it->castTo<reco::TrackRef>();
+	result.insert(theTrackRef);
       }
     }
     
     return result;
-  }
+    }
 
-
+  /* //Returns an empty track_set to test the function above
+  track_set vertex_track_set(const reco::Vertex & v, const double min_weight = 0.5) {
+    track_set result;
+    return result; }
+  */
+  
   
   std::pair<bool, Measurement1D> track_dist(const reco::TransientTrack & t, const reco::Vertex & v) const {
     if (use_2d_track_dist)
@@ -218,17 +225,30 @@ void Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   auto const &tt_builder = iSetup.getData(token_builder);
 
   //Get the reco tracks from the events
-  edm::Handle<std::vector<reco::Track>> seed_track_refs;
-  iEvent.getByToken(seed_tracks_token_, seed_track_refs);
+  edm::Handle<std::vector<reco::Track>> seed_track_handle;
+  iEvent.getByToken(seed_tracks_token_, seed_track_handle);
 
+
+  //  const edm::Ref<reco::Track> leadingTrackRef(seed_track_refs, 0);
 
   //Build transient tracks from reco tracks
-  std::vector<reco::TransientTrack> seed_tracks = tt_builder.build(seed_track_refs);
+  std::vector<reco::TransientTrack> seed_tracks = tt_builder.build(seed_track_handle);
 
-  std::map<reco::Track, size_t> seed_track_ref_map;
-    for (const reco::Track& tk : *seed_track_refs) {
-       seed_track_ref_map[tk] = seed_tracks.size() - 1;
+
+  std::vector<reco::TrackRef> seed_track_refs;
+
+  for (size_t i_tk = 0; i_tk < seed_track_handle->size(); i_tk++){
+    const edm::Ref<reco::TrackCollection> tk_ref(seed_track_handle, i_tk);
+    seed_track_refs.push_back(tk_ref);
   }
+  
+  //Former map from tracks to the number of seed tracks
+  std::map<reco::TrackRef, size_t> seed_track_ref_map;
+  for (const reco::TrackRef& tk : seed_track_refs) {
+    seed_track_ref_map[tk] = seed_tracks.size() - 1;
+  }
+  
+  //const size_t seed_track_ref_map[tk] = seed_tracks.size() - 1;
   
 
   //////////////////////////////////////////////////////////////////////
@@ -249,7 +269,7 @@ void Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
       ttks[i] = seed_tracks[itks[i]];
 
     TransientVertex seed_vertex = kv_reco.vertex(ttks);
-    if (seed_vertex.isValid() && seed_vertex.normalisedChiSquared() < max_seed_vertex_chi2) { //hardcoded the max chi2 to 5 for now
+    if (seed_vertex.isValid() && seed_vertex.normalisedChiSquared() < max_seed_vertex_chi2) { 
       vertices.push_back(reco::Vertex(seed_vertex));
     }
   };
@@ -317,7 +337,7 @@ void Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         break;
       }
 
-      std::vector<reco::Track> shared_tracks;
+      std::vector<reco::TrackRef> shared_tracks;
       for (auto tk : tracks[0])
         if (tracks[1].count(tk) > 0)
           shared_tracks.push_back(tk);
