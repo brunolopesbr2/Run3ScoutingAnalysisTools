@@ -5,7 +5,7 @@
 Setup a CMSSW working area and clone the `Run3ScoutingAnalysisTools` repo in the specific branch `Run3`:
 ```
 cmsrel CMSSW_13_3_0
-cd CMSSW_14_0_4/src
+cd CMSSW_13_3_0/src
 cmsenv
 git cms-init
 git clone https://github.com/brunolopesbr2/Run3ScoutingAnalysisTools.git -b Run3_JetHT_Winter24
