@@ -1,0 +1,113 @@
+WINTER24 CONDITIONS
+
+STEP 1
+cmsDriver.py Configuration/GenProduction/python/fragment_M2000_ctau100.py --python_filename GENSIM-M2000ctau100.py --eventcontent RAWSIM --customise Configuration/DataProcessing/Utils.addMonitoring --datatier GEN-SIM --fileout file:GENSIM.root --conditions 133X_mcRun3_2024_realistic_v9 --beamspot Realistic25ns13p6TeVEarly2023Collision  --step GEN,SIM --geometry DB:Extended --era Run3_2023 --no_exec --mc -n  10
+
+STEP 2
+cmsDriver.py --python_filename DIGIRAWHLT.py --eventcontent PREMIXRAWSIM --pileup 2023_LHC_Simulation_12p5h_9h_hybrid2p23 --customise Configuration/DataProcessing/Utils.addMonitoring --datatier GEN-SIM-RAW --fileout file:GENSIMRAW.root --pileup_input "dbs:/MinBias_TuneCP5_13p6TeV-pythia8/Run3Winter24GS-133X_mcRun3_2024_realistic_v7-v1/GEN-SIM" --conditions 133X_mcRun3_2024_realistic_v10 --step DIGI,L1,DIGI2RAW,HLT:2023v12 --geometry DB:Extended --filein "dbs:/StopStopbarTo2Dbar2D_M-25_CTau-100um_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-25_CTau-100um_v1-011ec941db66b542f9694878e18c8a58/USER" --era Run3_2023 --no_exec --mc -n  10
+
+With the fragments from Thiago’s instructions at https://github.com/trtomei/gen-Run3Summer23/tree/main
+
+WINTER 24 SAMPLES (mass, lifetime)
+
+STEP 1
+25, 0.1: /StopStopbarTo2Dbar2D_M-25_CTau-100um_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-25_CTau-100um_v1-011ec941db66b542f9694878e18c8a58/USER
+25, 1  : /StopStopbarTo2Dbar2D_M-25_CTau-1mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-25_CTau-1mm_v1-4721511b8b594c719cabd05fc2ed057c/USER
+25, 10 : /StopStopbarTo2Dbar2D_M-25_CTau-10mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-25_CTau-10mm_v1-da7e13320c40233258812634c141789f/USER
+25, 100: /StopStopbarTo2Dbar2D_M-25_CTau-100mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-25_CTau-100mm_v1-203f14b21e6f22ccb34f494fc179c6ed/USER
+
+50, 0.1: /StopStopbarTo2Dbar2D_M-50_CTau-100um_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-50_CTau-100um_v1-dad3153a3931c08fd8d608bf9cc09f70/USER
+50, 1  : /StopStopbarTo2Dbar2D_M-50_CTau-1mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-50_CTau-1mm_v1-8d233c8842a8240d4af305f1235a6266/USER
+50, 10 : /StopStopbarTo2Dbar2D_M-50_CTau-10mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-50_CTau-10mm_v1-e5d69df281dad82bf67140c546eaa7d4/USER
+50, 100: /StopStopbarTo2Dbar2D_M-50_CTau-100mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-50_CTau-100mm_v1-53743013138325114b2399711b69d1ff/USER
+
+100, 0.1: /StopStopbarTo2Dbar2D_M-100_CTau-100um_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-100_CTau-100um_v1-eb357d64bf0fd633f99a3198aab3c976/USER
+100, 1  : /StopStopbarTo2Dbar2D_M-100_CTau-1mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-100_CTau-1mm_v1-8b95fe81ba1a0ed95537f7b8f4cc7ca3/USER
+100, 10 : /StopStopbarTo2Dbar2D_M-100_CTau-10mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-100_CTau-10mm_v1-82bc57617c02ecc20f08a1329497bd9d/USER
+100, 100: /StopStopbarTo2Dbar2D_M-100_CTau-100mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-100_CTau-100mm_v1-ca414be842ffc17cd5e9dcbcab0e93cb/USER
+
+200, 0.1: /StopStopbarTo2Dbar2D_M-200_CTau-100um_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-200_CTau-100um_v1-064f1be51494d0e67ecb362a00cb5ea1/USER
+200, 1  : /StopStopbarTo2Dbar2D_M-200_CTau-1mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-200_CTau-1mm_v1-d32c556b87673e5adbce32d34b33ede9/USER
+200, 10 : /StopStopbarTo2Dbar2D_M-200_CTau-10mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-200_CTau-10mm_v1-7a2e0e16004466db324d26ece7006d7b/USER
+200, 100: /StopStopbarTo2Dbar2D_M-200_CTau-100mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-200_CTau-100mm_v1-968c1d376efe5a69413875db84d35d7b/USER
+
+400, 0.1: /StopStopbarTo2Dbar2D_M-400_CTau-100um_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-400_CTau-100um_v1-37dc8e7c2d2c9fa3d35802df7f089191/USER
+400, 1  : /StopStopbarTo2Dbar2D_M-400_CTau-1mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-400_CTau-1mm_v1-50dc524c3906a9635bfd6001c9dfaad0/USER
+400, 10 : /StopStopbarTo2Dbar2D_M-400_CTau-10mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-400_CTau-10mm_v1-927d575d4f5180b4ccdc66b17d69ee92/USER
+400, 100: /StopStopbarTo2Dbar2D_M-400_CTau-100mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-400_CTau-100mm_v1-49fc51416d5b8f993afd82aa142ba14a/USER
+
+600, 0.1: /StopStopbarTo2Dbar2D_M-600_CTau-100um_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-600_CTau-100um_v1-03d82625d14e6470208bcffe7f2a068c/USER
+600, 1  : /StopStopbarTo2Dbar2D_M-600_CTau-1mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-600_CTau-1mm_v1-ec4bf920f9fc94de2ff5dc184349e868/USER
+600, 10 : /StopStopbarTo2Dbar2D_M-600_CTau-10mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-600_CTau-10mm_v1-f3e8b19096c684be0dabec975d06da32/USER
+600, 100: /StopStopbarTo2Dbar2D_M-600_CTau-100mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-600_CTau-100mm_v1-e59920378f7aea6e63b05eec25397f99/USER
+
+800, 0.1: /StopStopbarTo2Dbar2D_M-800_CTau-100um_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-800_CTau-100um_v1-19121cd3bb8d7eaa77f60a04001b5602/USER
+800, 1  : /StopStopbarTo2Dbar2D_M-800_CTau-1mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-800_CTau-1mm_v1-af8ed5918354b41beb40176dea78b24e/USER
+800, 10 : /StopStopbarTo2Dbar2D_M-800_CTau-10mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-800_CTau-10mm_v1-e0dd1e0ff0caaa34f067a9174d830d9a/USER
+800, 100: /StopStopbarTo2Dbar2D_M-800_CTau-100mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-800_CTau-100mm_v1-63af70525a7fdedd668139836fa1b4f6/USER
+
+1000, 0.1: /StopStopbarTo2Dbar2D_M-1000_CTau-100um_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-1000_CTau-100um_v1-107462e94d62cef301805838775306a5/USER
+1000, 1  : /StopStopbarTo2Dbar2D_M-1000_CTau-1mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-1000_CTau-1mm_v1-55f29de786ecfc95950036ed4231056f/USER
+1000, 10 : /StopStopbarTo2Dbar2D_M-1000_CTau-10mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-1000_CTau-10mm_v1-37866aa44063a74150e6129bfa627935/USER
+1000, 100: /StopStopbarTo2Dbar2D_M-1000_CTau-100mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-1000_CTau-100mm_v1-a522a2a82fedebffe22df3905aad22e8/USER
+
+1500, 0.1: /StopStopbarTo2Dbar2D_M-1500_CTau-100um_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-1500_CTau-100um_v1-7c9f675101f6ec8ccf65419e99505960/USER
+1500, 1  : /StopStopbarTo2Dbar2D_M-1500_CTau-1mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-1500_CTau-1mm_v1-839b869e07577aba1701a6a082495de2/USER
+1500, 10 : /StopStopbarTo2Dbar2D_M-1500_CTau-10mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-1500_CTau-10mm_v1-efac3d3e627ed335a64d5e661d411f3d/USER
+1500, 100: /StopStopbarTo2Dbar2D_M-1500_CTau-100mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-1500_CTau-100mm_v1-4d87a95c0eacf48484e28fa5a015ee6b/USER
+
+2000, 0.1: /StopStopbarTo2Dbar2D_M-2000_CTau-100um_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-2000_CTau-100um_v1-b77edd23bcbb34ddc3daf20811e3acb4/USER
+2000, 1  : /StopStopbarTo2Dbar2D_M-2000_CTau-1mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-2000_CTau-1mm_v1-ed608b62c001df05c706537ed644c964/USER
+2000, 10 : /StopStopbarTo2Dbar2D_M-2000_CTau-10mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-2000_CTau-10mm_v1-2ae7ebc0e1b411fe99ba7ce43ccb1bd2/USER
+2000, 100: /StopStopbarTo2Dbar2D_M-2000_CTau-100mm_v1/brlopesd-CRAB3_MC_StopStopbarTo2Dbar2D_M-2000_CTau-100mm_v1-968c1d376efe5a69413875db84d35d7b/USER
+
+STEP 2
+25, 0.1: /StopStopbarTo2Dbar2D_M-25_CTau-100um_v1/brlopesd-StopStopbarTo2Dbar2D_M-25_CTau-100um_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+25, 1  : /StopStopbarTo2Dbar2D_M-25_CTau-1mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-25_CTau-1mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+25, 10 : /StopStopbarTo2Dbar2D_M-25_CTau-10mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-25_CTau-10mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+25, 100: /StopStopbarTo2Dbar2D_M-25_CTau-100mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-25_CTau-100mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+
+50, 0.1: /StopStopbarTo2Dbar2D_M-50_CTau-100um_v1/brlopesd-StopStopbarTo2Dbar2D_M-50_CTau-100um_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+50, 1  : /StopStopbarTo2Dbar2D_M-50_CTau-1mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-50_CTau-1mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+50, 10 : /StopStopbarTo2Dbar2D_M-50_CTau-10mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-50_CTau-10mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+50, 100: /StopStopbarTo2Dbar2D_M-50_CTau-100mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-50_CTau-100mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+
+100, 0.1: /StopStopbarTo2Dbar2D_M-100_CTau-100um_v1/brlopesd-StopStopbarTo2Dbar2D_M-100_CTau-100um_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+100, 1  : /StopStopbarTo2Dbar2D_M-100_CTau-1mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-100_CTau-1mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+100, 10 : /StopStopbarTo2Dbar2D_M-100_CTau-10mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-100_CTau-10mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+100, 100: /StopStopbarTo2Dbar2D_M-100_CTau-100mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-100_CTau-100mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+
+200, 0.1: /StopStopbarTo2Dbar2D_M-200_CTau-100um_v1/brlopesd-StopStopbarTo2Dbar2D_M-200_CTau-100um_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+200, 1  : /StopStopbarTo2Dbar2D_M-200_CTau-1mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-200_CTau-1mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+200, 10 : /StopStopbarTo2Dbar2D_M-200_CTau-10mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-200_CTau-10mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+200, 100: /StopStopbarTo2Dbar2D_M-200_CTau-100mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-200_CTau-100mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+
+400, 0.1: /StopStopbarTo2Dbar2D_M-400_CTau-100um_v1/brlopesd-StopStopbarTo2Dbar2D_M-400_CTau-100um_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+400, 1  : /StopStopbarTo2Dbar2D_M-400_CTau-1mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-400_CTau-1mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+400, 10 : /StopStopbarTo2Dbar2D_M-400_CTau-10mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-400_CTau-10mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+400, 100: /StopStopbarTo2Dbar2D_M-400_CTau-100mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-400_CTau-100mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+
+600, 0.1: /StopStopbarTo2Dbar2D_M-600_CTau-100um_v1/brlopesd-StopStopbarTo2Dbar2D_M-600_CTau-100um_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+600, 1  : /StopStopbarTo2Dbar2D_M-600_CTau-1mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-600_CTau-1mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+600, 10 : /StopStopbarTo2Dbar2D_M-600_CTau-10mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-600_CTau-10mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+600, 100: /StopStopbarTo2Dbar2D_M-600_CTau-100mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-600_CTau-100mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+
+800, 0.1: /StopStopbarTo2Dbar2D_M-800_CTau-100um_v1/brlopesd-StopStopbarTo2Dbar2D_M-800_CTau-100um_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+800, 1  : /StopStopbarTo2Dbar2D_M-800_CTau-1mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-800_CTau-1mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+800, 10 : /StopStopbarTo2Dbar2D_M-800_CTau-10mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-800_CTau-10mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+800, 100: /StopStopbarTo2Dbar2D_M-800_CTau-100mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-800_CTau-100mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+
+1000, 0.1: /StopStopbarTo2Dbar2D_M-1000_CTau-100um_v1/brlopesd-StopStopbarTo2Dbar2D_M-1000_CTau-100um_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+1000, 1  : /StopStopbarTo2Dbar2D_M-1000_CTau-1mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-1000_CTau-1mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+1000, 10 : /StopStopbarTo2Dbar2D_M-1000_CTau-10mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-1000_CTau-10mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+1000, 100: /StopStopbarTo2Dbar2D_M-1000_CTau-100mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-1000_CTau-100mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+
+1500, 0.1: /StopStopbarTo2Dbar2D_M-1500_CTau-100um_v1/brlopesd-StopStopbarTo2Dbar2D_M-1500_CTau-100um_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+1500, 1  : /StopStopbarTo2Dbar2D_M-1500_CTau-1mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-1500_CTau-1mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+1500, 10 : /StopStopbarTo2Dbar2D_M-1500_CTau-10mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-1500_CTau-10mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+1500, 100: /StopStopbarTo2Dbar2D_M-1500_CTau-100mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-1500_CTau-100mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+
+2000, 0.1: /StopStopbarTo2Dbar2D_M-2000_CTau-100um_v1/brlopesd-StopStopbarTo2Dbar2D_M-2000_CTau-100um_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+2000, 1  : /StopStopbarTo2Dbar2D_M-2000_CTau-1mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-2000_CTau-1mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+2000, 10 : /StopStopbarTo2Dbar2D_M-2000_CTau-10mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-2000_CTau-10mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
+2000, 100: /StopStopbarTo2Dbar2D_M-2000_CTau-100mm_v1/brlopesd-StopStopbarTo2Dbar2D_M-2000_CTau-100mm_v1-b96e8cb99a3791a11d5c9fd46e6f4c90/USER
