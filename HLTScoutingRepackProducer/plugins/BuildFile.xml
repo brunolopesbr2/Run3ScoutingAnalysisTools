@@ -1,0 +1,11 @@
+<use name="fastjet"/>
+<use name="fastjet-contrib"/>
+<use name="PhysicsTools/PatAlgos"/>
+<use name="DataFormats/Common"/>
+<use name="DataFormats/VertexReco"/>
+<use name="FWCore/Framework"/>
+<use name="FWCore/ParameterSet"/>
+<use name="rootrflx"/>
+<export>
+  <lib name="1"/>
+</export>

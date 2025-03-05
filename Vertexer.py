@@ -13,9 +13,8 @@ process.MessageLogger.cerr.FwkReport.reportEvery = 100
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 
 process.source = cms.Source("PoolSource",
-    # Test file generated on CMSSW 13.3.0
     fileNames = cms.untracked.vstring( 
-        'file:scout_test.root'
+        'file:scout_unpacked.root'
     )
 )
 
@@ -23,12 +22,11 @@ process.source = cms.Source("PoolSource",
 process.load('Configuration.StandardSequences.GeometryRecoDB_cff')
 process.load("Configuration.StandardSequences.MagneticField_cff")
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
-process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 
 
 #Choosing the GlobalTag  
 from Configuration.AlCa.GlobalTag import GlobalTag
-process.GlobalTag = GlobalTag(process.GlobalTag, '133X_mcRun3_2024_realistic_v9', '')  
+process.GlobalTag = GlobalTag(process.GlobalTag, '140X_dataRun3_Prompt_v4', '')  #GT for data
 
 process.load("RecoVertex.BeamSpotProducer.BeamSpot_cfi")
 process.load("TrackingTools.TransientTrack.TransientTrackBuilder_cfi")
@@ -66,7 +64,7 @@ process.Vertexer = cms.EDProducer('Vertexer',
 
 # Save only the scouting collections on the output file
 process.out = cms.OutputModule("PoolOutputModule",
-    fileName = cms.untracked.string('vertexer_test.root'),
+    fileName = cms.untracked.string('scout_withRecoVertex.root'),
 )
 
 # Usually it is better to put producers on a task instead of a path
