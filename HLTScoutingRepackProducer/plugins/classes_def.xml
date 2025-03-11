@@ -1,5 +1,0 @@
-<lcgdict>
-    <!-- Declare the types used in the plugin -->
-    <class name="edm::ValueMap<edm::Ref<std::vector<reco::Vertex>, reco::Vertex, edm::refhelper::FindUsingAdvance<std::vector<reco::Vertex>, reco::Vertex>>>" />
-    <class name="edm::Wrapper<edm::ValueMap<edm::Ref<std::vector<reco::Vertex>, reco::Vertex, edm::refhelper::FindUsingAdvance<std::vector<reco::Vertex>, reco::Vertex>>>>" />
-</lcgdict>
