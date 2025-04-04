@@ -123,8 +123,8 @@ private:
   const edm::EDGetTokenT<std::vector<reco::Vertex> >  verticesToken;
 
   const edm::EDGetTokenT<reco::BeamSpot> beamspot_token;
-  const edm::EDGetTokenT<std::vector<reco::GenParticle>> GenParticleToken_;
-  const edm::EDGetTokenT<GenEventInfoProduct> GeneratorToken_;
+  //const edm::EDGetTokenT<std::vector<reco::GenParticle>> GenParticleToken_;
+  //const edm::EDGetTokenT<GenEventInfoProduct> GeneratorToken_;
   const edm::ESGetToken<TransientTrackBuilder, TransientTrackRecord> token_builder;
     
   std::vector<std::string> triggerPathsVector;
@@ -222,6 +222,7 @@ private:
   std::vector<int>* scoutTrack_nValidPixelHits;
   std::vector<int>* scoutTrack_nTrackerLayersWithMeasurement;
   std::vector<int>* scoutTrack_nValidStripHits;
+  std::vector<int>* scoutTrack_nMissingInnerHits;
   std::vector<float>* scoutTrack_minPVDxy;
   std::vector<float>* scoutTrack_minPVDz;
 
@@ -239,6 +240,7 @@ private:
   std::vector<int>* vertTrack_nValidPixelHits;
   std::vector<int>* vertTrack_nTrackerLayersWithMeasurement;
   std::vector<int>* vertTrack_nValidStripHits;
+  std::vector<int>* vertTrack_nMissingInnerHits;
   std::vector<int>* vertTrack_iVtx;
   
   std::vector<float>* match_ptRatio;
@@ -277,11 +279,20 @@ private:
   std::vector<float>* scoutVert_x;
   std::vector<float>* scoutVert_y;
   std::vector<float>* scoutVert_nTracks;
+  std::vector<float>* scoutVert_chi2;
   std::vector<float>* scoutVert_dPhi;
   std::vector<float>* scoutVert_dVV;
   int scoutVert_nVertices;
   double weight;
+  int eventId;
+  int runNumber;
+  int lumiBlock;
 
+  std::vector<float>* jet_pt;
+  std::vector<float>* jet_eta;
+  std::vector<float>* jet_phi;
+  std::vector<float>* jet_mass;
+  
   TH1F* h_match_gen_dxy = new TH1F("match_gen_dxy",";Gen particle d_{xy} [cm]; Gen particles / 0.01 cm", 100, 0, 1);
   TH1F* h_gen_dxy = new TH1F("gen_dxy",";Gen particle d_{xy} [cm]; Gen particles / 0.01 cm", 100, 0, 1);
   TH2F* h_match_vert_x_y = new TH2F("match_vert_x_y","Vertex Position; X Position [cm] / 0.02 cm; Y Position [cm] / 0.02 cm", 100, -1, 1, 100, -1, 1);
@@ -306,9 +317,9 @@ private:
   TH1F* h_scoutVert_dPhi = new TH1F("scoutVert_dPhi",";Scout Vertex d#phi; Occurrences / 0.03142", 100, 0, 3.142);
   TH1F* h_scoutVert_dVV = new TH1F("scoutVert_dVV",";Scout Vertex d_{VV} [cm]; Occurrences / 0.015 cm", 1000, 0, 15);
   TH1F* h_scoutVert_nVertices = new TH1F("scoutVert_nVertices",";Number of Scout Vertices; Occurrences / 1", 10, 0, 10);
-  TH1D* h_genWeights = new TH1D("genWeights",";Cut Applied; Sum of Gen Weights",5,0,5);
-  TH1D* h_weights = new TH1D("weights",";Cut Applied; Sum of Weights",5,0,5);
-  TH1D* h_weightsSquared = new TH1D("weightsSquared",";Cut Applied; Sum of Squared Weights",5,0,5);
+  //TH1D* h_genWeights = new TH1D("genWeights",";Cut Applied; Sum of Gen Weights",5,0,5);
+  //TH1D* h_weights = new TH1D("weights",";Cut Applied; Sum of Weights",5,0,5);
+  //TH1D* h_weightsSquared = new TH1D("weightsSquared",";Cut Applied; Sum of Squared Weights",5,0,5);
   
   typedef std::set<reco::TrackRef> track_set;
   typedef std::vector<reco::TrackRef> track_vec;
@@ -462,8 +473,8 @@ ScoutingTreeMakerRun3::ScoutingTreeMakerRun3(const edm::ParameterSet& iConfig):
   tracksRefToken              (consumes<edm::ValueMap<edm::Ref<std::vector<Run3ScoutingTrack>>> >            (iConfig.getParameter<edm::InputTag>("trackRefs"))),    
   verticesToken            (consumes<std::vector<reco::Vertex> >           (iConfig.getParameter<edm::InputTag>("displacedVertices"))),  
   beamspot_token(consumes<reco::BeamSpot>(iConfig.getParameter<edm::InputTag>("beamspot_src"))),
-  GenParticleToken_(consumes(iConfig.getParameter<edm::InputTag>("genParticle_src"))),
-  GeneratorToken_(consumes(iConfig.getParameter<edm::InputTag>("generatorName"))),
+  //GenParticleToken_(consumes(iConfig.getParameter<edm::InputTag>("genParticle_src"))),
+  //GeneratorToken_(consumes(iConfig.getParameter<edm::InputTag>("generatorName"))),
   token_builder(esConsumes(edm::ESInputTag("", "TransientTrackBuilder"))),
   doTrigger                     (iConfig.existsAs<bool>("doTrigger")               ?    iConfig.getParameter<bool>  ("doTrigger")            : false),
   isScouting                     (iConfig.existsAs<bool>("isScouting")               ?    iConfig.getParameter<bool>  ("isScouting")            : false),
@@ -518,6 +529,7 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
   scoutTrack_nValidPixelHits->clear();
   scoutTrack_nTrackerLayersWithMeasurement->clear();
   scoutTrack_nValidStripHits->clear();
+  scoutTrack_nMissingInnerHits->clear();
   scoutTrack_minPVDxy->clear();
   scoutTrack_minPVDz->clear();
 
@@ -535,6 +547,7 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
   vertTrack_nValidPixelHits->clear();
   vertTrack_nTrackerLayersWithMeasurement->clear();
   vertTrack_nValidStripHits->clear();
+  vertTrack_nMissingInnerHits->clear();
   vertTrack_iVtx->clear();
   
   match_deltaR->clear();
@@ -572,10 +585,20 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
   scoutVert_x->clear();
   scoutVert_y->clear();
   scoutVert_nTracks->clear();
+  scoutVert_chi2->clear();
   scoutVert_dPhi->clear();
   scoutVert_dVV->clear();
 
-  edm::Handle<GenEventInfoProduct> generatorHandle;
+  jet_pt->clear();
+  jet_eta->clear();
+  jet_phi->clear();
+  jet_mass->clear();
+
+  eventId = iEvent.id().event();
+  runNumber = iEvent.id().run();
+  lumiBlock = iEvent.luminosityBlock();
+  
+  /*  edm::Handle<GenEventInfoProduct> generatorHandle;
   iEvent.getByToken(GeneratorToken_, generatorHandle);
   double genWeight = generatorHandle->weight();
   h_genWeights->Fill("None",genWeight);
@@ -583,6 +606,7 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
   weight = theWeight;
   h_weights->Fill("None",theWeight);
   h_weightsSquared->Fill("None",pow(theWeight,2));
+  */
   
   //Get the beamspot
   edm::Handle<reco::BeamSpot> beamspot;
@@ -634,6 +658,8 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
       scoutTrack_nTrackerLayersWithMeasurement->push_back(scoutingTrackIter->hitPattern().trackerLayersWithMeasurement());
       scoutTrack_nValidStripHits->push_back(scoutingTrackIter->hitPattern().numberOfValidStripHits());
     }
+    scoutTrack_nMissingInnerHits->push_back(scoutingTrackIter->missingInnerHits());
+    
     float minPVDxy = 999999;
     float minPVDz = 999999;
     
@@ -654,7 +680,7 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
   std::vector<Run3ScoutingPFJet> pfJetVector;
   
   //Require 4 PF Jets
-  if(pfjetsH.isValid()){
+  if(pfjetsH.isValid() && isScouting){
     for (auto jets_iter = pfjetsH->begin(); jets_iter != pfjetsH->end(); ++jets_iter) {
       if(jets_iter->pt() > 20){
 	pfJetVector.push_back(*jets_iter);
@@ -663,13 +689,17 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
     nPFJets = pfJetVector.size();
     if (nPFJets<4) return;
 
-    h_genWeights->Fill("nJets",genWeight);
-    h_weights->Fill("nJets",theWeight);
-    h_weightsSquared->Fill("nJets",pow(theWeight,2));
+    //    h_genWeights->Fill("nJets",genWeight);
+    //h_weights->Fill("nJets",theWeight);
+    // h_weightsSquared->Fill("nJets",pow(theWeight,2));
   
     HT = 0;
     int t = 0;
     for (auto jet: pfJetVector) {
+      jet_pt->push_back(jet.pt());
+      jet_eta->push_back(jet.eta());
+      jet_phi->push_back(jet.phi());
+      jet_mass->push_back(jet.m());
       HT = HT + jet.pt();
       t++;
     }
@@ -681,7 +711,7 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
   std::vector<pat::Jet> patJetVector;
 
   //Require 4 Pat Jets
-  if(patjetsH.isValid()){
+  if(patjetsH.isValid() && !isScouting){
     for (auto jets_iter = patjetsH->begin(); jets_iter != patjetsH->end(); ++jets_iter) {
       if(jets_iter->pt() > 20){
 	patJetVector.push_back(*jets_iter);
@@ -690,13 +720,17 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
     nPFJets = patJetVector.size();
     if (nPFJets<4) return;
 
-    h_genWeights->Fill("nJets",genWeight);
-    h_weights->Fill("nJets",theWeight);
-    h_weightsSquared->Fill("nJets",pow(theWeight,2));
+    //h_genWeights->Fill("nJets",genWeight);
+    //h_weights->Fill("nJets",theWeight);
+    //h_weightsSquared->Fill("nJets",pow(theWeight,2));
   
     HT = 0;
     int t = 0;
     for (auto jet: patJetVector) {
+      jet_pt->push_back(jet.pt());
+      jet_eta->push_back(jet.eta());
+      jet_phi->push_back(jet.phi());
+      jet_mass->push_back(jet.mass());
       HT = HT + jet.pt();
       t++;
     }
@@ -725,9 +759,9 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
 
     if (nVertices<1) return;
     
-    h_genWeights->Fill("nVertices",genWeight);
-    h_weights->Fill("nVertices",theWeight);
-    h_weightsSquared->Fill("nVertices",pow(theWeight,2));
+    //h_genWeights->Fill("nVertices",genWeight);
+    //h_weights->Fill("nVertices",theWeight);
+    //h_weightsSquared->Fill("nVertices",pow(theWeight,2));
   
     h_scoutVert_nVertices->Fill(vertices_ntk.size());
     scoutVert_nVertices = vertices_ntk.size();
@@ -765,6 +799,7 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
 	  vertTrack_nTrackerLayersWithMeasurement->push_back(vertTrack->hitPattern().trackerLayersWithMeasurement());
 	  vertTrack_nValidStripHits->push_back(vertTrack->hitPattern().numberOfValidStripHits());
 	}
+	vertTrack_nMissingInnerHits->push_back(vertTrack->missingInnerHits());
       }
       t++;
     }
@@ -773,7 +808,7 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
   std::vector<reco::GenParticle>::const_iterator genParticleIter;
   edm::Handle<std::vector<reco::GenParticle>> genParticle_handle;
   std::vector<GlobalPoint> genVertices;
-  
+  /*
   if(doGenMatching){
     //Get gen particles for truth-level vertices
     iEvent.getByToken(GenParticleToken_,genParticle_handle);
@@ -942,7 +977,7 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
     }
     genScout_nMatches = finalMatches.size();
   }  //doGenMatching
-  
+  */
   //Two leading vertices
   vector<double> dBVs;
   VertexDistanceXY vertex_dist_2d;
@@ -972,7 +1007,8 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
     scoutVert_y->push_back(v.y()-beamspot->y0());
     h_scoutVert_nTracks->Fill(trks.size());
     scoutVert_nTracks->push_back(trks.size());
-
+    scoutVert_chi2->push_back(v.normalizedChi2());
+/*
     if(doGenMatching){
       int i_trk = -1;
       for(auto trk: trks){
@@ -999,10 +1035,10 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
 	  }
 	} // loop over gen particles
       } // loop over vertex tracks
-    } // doGenMatching
+      } // doGenMatching*/
     t++;  
   } //loop over vertices
-
+/*
   if(doGenMatching){
     sort(deltaRVecVertices.begin(), deltaRVecVertices.end(), CompareDeltaR); //sort matches by deltaR smallest to largest
     std::vector<std::vector<float>> finalMatchesVertices;
@@ -1068,7 +1104,7 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
 	resVert_z->push_back(vertex.z()-scoutVert.z());
       }
     }
-  } //doGenMatching
+    } //doGenMatching */
   
   if(vertices_ntk.size()>1){
     for (uint i=0; i<(vertices_ntk.size()-1); i++){
@@ -1132,9 +1168,9 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
 
     if(dBV_1<0.1) return;
 
-    h_genWeights->Fill("dBV",genWeight);
-    h_weights->Fill("dBV",theWeight);
-    h_weightsSquared->Fill("dBV",pow(theWeight,2));
+    //h_genWeights->Fill("dBV",genWeight);
+    //h_weights->Fill("dBV",theWeight);
+    //h_weightsSquared->Fill("dBV",pow(theWeight,2));
     
     //printf("First dBV = %f, second dBV = %f\n", dBV_1, dBV_2);
     if(nVertices>1){
@@ -1174,9 +1210,9 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
       L1_FinalResult = L1_HTT280er || L1_ETT2000 || L1_SingleJet180 || L1_DoubleJet30er2p5_Mass_Min250_dEta_Max1p5;
       if(!L1_FinalResult) return;
       
-      h_genWeights->Fill("Trigger",genWeight);
-      h_weights->Fill("Trigger",theWeight);
-      h_weightsSquared->Fill("Trigger",pow(theWeight,2));
+      //h_genWeights->Fill("Trigger",genWeight);
+      //h_weights->Fill("Trigger",theWeight);
+      //h_weightsSquared->Fill("Trigger",pow(theWeight,2));
     }
     else{
       edm::Handle<edm::TriggerResults> triggerBits;
@@ -1191,9 +1227,9 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
       }
       if(!HLT_FinalResult) return;
 
-      h_genWeights->Fill("Trigger",genWeight);
-      h_weights->Fill("Trigger",theWeight);
-      h_weightsSquared->Fill("Trigger",pow(theWeight,2));
+      //h_genWeights->Fill("Trigger",genWeight);
+      //h_weights->Fill("Trigger",theWeight);
+      //h_weightsSquared->Fill("Trigger",pow(theWeight,2));
     }
   }
 
@@ -1270,7 +1306,6 @@ void ScoutingTreeMakerRun3::beginJob() {
     tree->Branch("genScoutVert_nMatches"              , &genScoutVert_nMatches                      , "genScoutVert_nMatches/I"      );
     tree->Branch("genVert_nVertices", &genVert_nVertices, "genVert_nVertices/I");
     tree->Branch("scoutVert_nVertices", &scoutVert_nVertices, "scoutVert_nVertices/I");
-    tree->Branch("weight", &weight, "weight/D");
 
     scoutTrack_pt = new std::vector<float>;
     scoutTrack_eta = new std::vector<float>;
@@ -1286,6 +1321,7 @@ void ScoutingTreeMakerRun3::beginJob() {
     scoutTrack_nValidPixelHits = new std::vector<int>;
     scoutTrack_nTrackerLayersWithMeasurement = new std::vector<int>;
     scoutTrack_nValidStripHits = new std::vector<int>;
+    scoutTrack_nMissingInnerHits = new std::vector<int>;
     scoutTrack_minPVDxy = new std::vector<float>;
     scoutTrack_minPVDz = new std::vector<float>;
 
@@ -1303,6 +1339,7 @@ void ScoutingTreeMakerRun3::beginJob() {
     vertTrack_nValidPixelHits = new std::vector<int>;
     vertTrack_nTrackerLayersWithMeasurement = new std::vector<int>;
     vertTrack_nValidStripHits = new std::vector<int>;
+    vertTrack_nMissingInnerHits = new std::vector<int>;
     vertTrack_iVtx = new std::vector<int>; 
     
     match_ptRatio = new std::vector<float>;
@@ -1340,8 +1377,14 @@ void ScoutingTreeMakerRun3::beginJob() {
     scoutVert_x = new std::vector<float>;
     scoutVert_y = new std::vector<float>;
     scoutVert_nTracks = new std::vector<float>;
+    scoutVert_chi2 = new std::vector<float>;
     scoutVert_dPhi = new std::vector<float>;
     scoutVert_dVV = new std::vector<float>;
+
+    jet_pt = new std::vector<float>;
+    jet_eta = new std::vector<float>;
+    jet_phi = new std::vector<float>;
+    jet_mass = new std::vector<float>;
     
     objectTree = fs->make<TTree>("objectTree","objectTree");
     //std::cout<<"objectTree directory beginJob "<<objectTree->GetDirectory()->GetPath()<<std::endl;
@@ -1359,6 +1402,7 @@ void ScoutingTreeMakerRun3::beginJob() {
     objectTree->Branch("vertTrack_nValidPixelHits",&vertTrack_nValidPixelHits);
     objectTree->Branch("vertTrack_nTrackerLayersWithMeasurement",&vertTrack_nTrackerLayersWithMeasurement);
     objectTree->Branch("vertTrack_nValidStripHits",&vertTrack_nValidStripHits);
+    objectTree->Branch("vertTrack_nMissingInnerHits",&vertTrack_nMissingInnerHits);
     objectTree->Branch("vertTrack_iVtx",&vertTrack_iVtx);
     
     objectTree->Branch("scoutTrack_pt",&scoutTrack_pt);
@@ -1375,6 +1419,7 @@ void ScoutingTreeMakerRun3::beginJob() {
     objectTree->Branch("scoutTrack_nValidPixelHits",&scoutTrack_nValidPixelHits);
     objectTree->Branch("scoutTrack_nTrackerLayersWithMeasurement",&scoutTrack_nTrackerLayersWithMeasurement);
     objectTree->Branch("scoutTrack_nValidStripHits",&scoutTrack_nValidStripHits);
+    objectTree->Branch("scoutTrack_nMissingInnerHits",&scoutTrack_nMissingInnerHits);
     objectTree->Branch("scoutTrack_minPVDxy",&scoutTrack_minPVDxy);
     objectTree->Branch("scoutTrack_minPVDz",&scoutTrack_minPVDz);
     
@@ -1413,24 +1458,33 @@ void ScoutingTreeMakerRun3::beginJob() {
     objectTree->Branch("scoutVert_x",&scoutVert_x);
     objectTree->Branch("scoutVert_y",&scoutVert_y);
     objectTree->Branch("scoutVert_nTracks",&scoutVert_nTracks);
+    objectTree->Branch("scoutVert_chi2",&scoutVert_chi2);
     objectTree->Branch("scoutVert_dPhi",&scoutVert_dPhi);
     objectTree->Branch("scoutVert_dVV",&scoutVert_dVV);
+    objectTree->Branch("weight", &weight, "weight/D");
+    objectTree->Branch("eventId", &eventId, "eventId/I");
+    objectTree->Branch("runNumber", &runNumber, "runNumber/I");
+    objectTree->Branch("lumiBlock", &lumiBlock, "lumiBlock/I");
+    objectTree->Branch("jet_pt",&jet_pt);
+    objectTree->Branch("jet_eta",&jet_eta);
+    objectTree->Branch("jet_phi",&jet_phi);
+    objectTree->Branch("jet_mass",&jet_mass);
 
-    h_genWeights->GetXaxis()->SetBinLabel(1,"None");
-    h_genWeights->GetXaxis()->SetBinLabel(2,"nJets");
-    h_genWeights->GetXaxis()->SetBinLabel(3,"nVertices");
-    h_genWeights->GetXaxis()->SetBinLabel(4,"dBV");
-    h_genWeights->GetXaxis()->SetBinLabel(5,"Trigger");
-    h_weights->GetXaxis()->SetBinLabel(1,"None");
-    h_weights->GetXaxis()->SetBinLabel(2,"nJets");
-    h_weights->GetXaxis()->SetBinLabel(3,"nVertices");
-    h_weights->GetXaxis()->SetBinLabel(4,"dBV");
-    h_weights->GetXaxis()->SetBinLabel(5,"Trigger");
-    h_weightsSquared->GetXaxis()->SetBinLabel(1,"None");
-    h_weightsSquared->GetXaxis()->SetBinLabel(2,"nJets");
-    h_weightsSquared->GetXaxis()->SetBinLabel(3,"nVertices");
-    h_weightsSquared->GetXaxis()->SetBinLabel(4,"dBV");
-    h_weightsSquared->GetXaxis()->SetBinLabel(5,"Trigger");
+    //h_genWeights->GetXaxis()->SetBinLabel(1,"None");
+    //h_genWeights->GetXaxis()->SetBinLabel(2,"nJets");
+    //h_genWeights->GetXaxis()->SetBinLabel(3,"nVertices");
+    //h_genWeights->GetXaxis()->SetBinLabel(4,"dBV");
+    //h_genWeights->GetXaxis()->SetBinLabel(5,"Trigger");
+    //h_weights->GetXaxis()->SetBinLabel(1,"None");
+    //h_weights->GetXaxis()->SetBinLabel(2,"nJets");
+    //h_weights->GetXaxis()->SetBinLabel(3,"nVertices");
+    //h_weights->GetXaxis()->SetBinLabel(4,"dBV");
+    //h_weights->GetXaxis()->SetBinLabel(5,"Trigger");
+    //h_weightsSquared->GetXaxis()->SetBinLabel(1,"None");
+    //h_weightsSquared->GetXaxis()->SetBinLabel(2,"nJets");
+    //h_weightsSquared->GetXaxis()->SetBinLabel(3,"nVertices");
+    //h_weightsSquared->GetXaxis()->SetBinLabel(4,"dBV");
+    //h_weightsSquared->GetXaxis()->SetBinLabel(5,"Trigger");
 }
 
 // ------------ method called once each job just after ending the event loop  ------------
@@ -1472,14 +1526,14 @@ void ScoutingTreeMakerRun3::endJob() {
   h_match_genVert_dBV->Draw();
   h_match_genVert_dBV->Write();
 
-  h_genWeights->Draw();
-  h_genWeights->Write();
+  //h_genWeights->Draw();
+  //h_genWeights->Write();
 
-  h_weights->Draw();
-  h_weights->Write();
+  //h_weights->Draw();
+  //h_weights->Write();
   
-  h_weightsSquared->Draw();
-  h_weightsSquared->Write();
+  //h_weightsSquared->Draw();
+  //h_weightsSquared->Write();
   
   removeFlows(h_genVert_phi);
   h_genVert_phi->Draw();
@@ -1565,6 +1619,7 @@ void ScoutingTreeMakerRun3::endJob() {
   delete scoutTrack_nValidPixelHits;
   delete scoutTrack_nTrackerLayersWithMeasurement;
   delete scoutTrack_nValidStripHits;
+  delete scoutTrack_nMissingInnerHits;
   delete scoutTrack_minPVDxy;
   delete scoutTrack_minPVDz;
 
@@ -1582,6 +1637,7 @@ void ScoutingTreeMakerRun3::endJob() {
   delete vertTrack_nValidPixelHits;
   delete vertTrack_nTrackerLayersWithMeasurement;
   delete vertTrack_nValidStripHits;
+  delete vertTrack_nMissingInnerHits;
   delete vertTrack_iVtx;
   
   delete match_ptRatio;
@@ -1619,8 +1675,14 @@ void ScoutingTreeMakerRun3::endJob() {
   delete scoutVert_x;
   delete scoutVert_y;
   delete scoutVert_nTracks;
+  delete scoutVert_chi2;
   delete scoutVert_dPhi;
   delete scoutVert_dVV;
+
+  delete jet_pt;
+  delete jet_eta;
+  delete jet_phi;
+  delete jet_mass;
 }
 
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
