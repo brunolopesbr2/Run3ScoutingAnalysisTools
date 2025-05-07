@@ -37,9 +37,9 @@
 #include "DataFormats/Common/interface/TriggerResults.h"
 #include "DataFormats/HLTReco/interface/TriggerEvent.h"
 #include "DataFormats/Scouting/interface/Run3ScoutingPFJet.h"
-#include "SimDataFormats/GeneratorProducts/interface/HepMCProduct.h"
-#include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
-#include "SimDataFormats/GeneratorProducts/interface/GenRunInfoProduct.h"
+//#include "SimDataFormats/GeneratorProducts/interface/HepMCProduct.h"
+//#include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
+//#include "SimDataFormats/GeneratorProducts/interface/GenRunInfoProduct.h"
 #include "TH1.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "CommonTools/UtilAlgos/interface/TFileService.h"
@@ -66,8 +66,8 @@ class TriggerFilter : public edm::one::EDFilter<edm::one::SharedResources> {
   
       // ----------member data ---------------------------
       const edm::EDGetTokenT<std::vector<Run3ScoutingPFJet> >  pfjetsToken;
-      const edm::EDGetTokenT<std::vector<pat::Jet> >  patjetsToken;
-      const edm::EDGetTokenT<GenEventInfoProduct> GeneratorToken_;
+  //const edm::EDGetTokenT<std::vector<pat::Jet> >  patjetsToken;
+  //const edm::EDGetTokenT<GenEventInfoProduct> GeneratorToken_;
       const edm::EDGetTokenT<edm::TriggerResults> triggerResultsToken;
       
       double luminosity;
@@ -98,8 +98,8 @@ class TriggerFilter : public edm::one::EDFilter<edm::one::SharedResources> {
 //
 TriggerFilter::TriggerFilter(const edm::ParameterSet& iConfig):
   pfjetsToken(consumes<std::vector<Run3ScoutingPFJet> >(iConfig.getParameter<edm::InputTag>("pfjets"))),
-  patjetsToken(consumes<std::vector<pat::Jet> >(iConfig.getParameter<edm::InputTag>("patjets"))),
-  GeneratorToken_(consumes(iConfig.getParameter<edm::InputTag>("generatorName"))),
+  //patjetsToken(consumes<std::vector<pat::Jet> >(iConfig.getParameter<edm::InputTag>("patjets"))),
+  //GeneratorToken_(consumes(iConfig.getParameter<edm::InputTag>("generatorName"))),
   triggerResultsToken(consumes<edm::TriggerResults>(iConfig.getParameter<edm::InputTag>("triggerresults"))),
   luminosity(iConfig.existsAs<double>("luminosity") ? iConfig.getParameter<double>  ("luminosity") : 1.0),
   crossSection(iConfig.existsAs<double>("crossSection") ? iConfig.getParameter<double>  ("crossSection") : 1.0),  
@@ -137,11 +137,11 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   bool passFilter = true;
   
-  edm::Handle<GenEventInfoProduct> generatorHandle;
-  iEvent.getByToken(GeneratorToken_, generatorHandle);
-  double genWeight = generatorHandle->weight();
+  //edm::Handle<GenEventInfoProduct> generatorHandle;
+  //iEvent.getByToken(GeneratorToken_, generatorHandle);
+  double genWeight = 1; //weights=1 for data
   h_genWeights->Fill("None",genWeight);
-  double theWeight = genWeight*luminosity*crossSection;
+  double theWeight = 1;
   h_weights->Fill("None",theWeight);
   h_weightsSquared->Fill("None",pow(theWeight,2));
   
@@ -162,11 +162,11 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
   }
 
   //Get the jets
-  Handle<vector<pat::Jet> > patjetsH;
-  iEvent.getByToken(patjetsToken, patjetsH);
-  std::vector<pat::Jet> patJetVector;
+  //Handle<vector<pat::Jet> > patjetsH;
+  //iEvent.getByToken(patjetsToken, patjetsH);
+  //std::vector<pat::Jet> patJetVector;
 
-  //Require 4 Pat Jets
+  /*  //Require 4 Pat Jets -- not present in data
   if(patjetsH.isValid()){
     for (auto jets_iter = patjetsH->begin(); jets_iter != patjetsH->end(); ++jets_iter) {
       if(jets_iter->pt() > 20){
@@ -174,14 +174,14 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
       }
     }
     nPFJets = patJetVector.size();  
-  }
+    }*/
   passFilter = passFilter && (nPFJets>3);
   if(passFilter){
     h_genWeights->Fill("nJets",genWeight);
     h_weights->Fill("nJets",theWeight);
     h_weightsSquared->Fill("nJets",pow(theWeight,2));
   }
-
+  
   bool passTrigger;
   if(isScouting){
     l1GtUtils_->retrieveL1(iEvent,iSetup,algToken_);

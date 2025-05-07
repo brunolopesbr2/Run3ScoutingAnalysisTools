@@ -31,12 +31,12 @@ process.options = cms.untracked.PSet(
 process.MessageLogger.cerr.FwkSummary.reportEvery = 100
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000) )
 
 process.source = cms.Source("PoolSource",
-    # Test file generated on CMSSW 13.3.0
+    # Data test file for 2024D
     fileNames = cms.untracked.vstring(
-        #'file:/afs/cern.ch/work/r/rmccarth/private/MiniAODSIM_QCD-HT_1500to2000.root'
+        '/store/data/Run2024D/ScoutingPFRun3/HLTSCOUT/v1/000/380/513/00000/9df0b3ba-32fd-4a25-afd0-5b6487e40ea6.root' 
     )
 )
 
@@ -46,7 +46,7 @@ process.load("Configuration.StandardSequences.MagneticField_cff")
 #Choosing the GlobalTag
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 from Configuration.AlCa.GlobalTag import GlobalTag
-process.GlobalTag = GlobalTag(process.GlobalTag, '133X_mcRun3_2024_realistic_v9', '')  
+process.GlobalTag = GlobalTag(process.GlobalTag, '140X_dataRun3_Prompt_v4', '')  #Summer24 data GT
 
 process.load("RecoVertex.BeamSpotProducer.BeamSpot_cfi")
 process.load("TrackingTools.TransientTrack.TransientTrackBuilder_cfi")
@@ -62,17 +62,19 @@ if(options.isScouting):
     #unpacker
     scoutingTrackTag = cms.InputTag('hltScoutingTrackPacker')
     scoutingPVTag = cms.InputTag("hltScoutingPrimaryVertexPacker","primaryVtx")
+    scoutingPFTag = cms.InputTag("hltScoutingPFPacker")
     pfCandTag = cms.InputTag("")
     lostTrackTag = cms.InputTag("")
 
     #skim and tree maker
     pfjetsTag = cms.InputTag("hltScoutingPFPacker")
     patjetsTag = cms.InputTag("")
-    pvTag = cms.InputTag("hltScoutingUnpackProducer","PrimaryVertex")
+    pvTag = cms.InputTag("hltScoutingPrimaryVertexPacker","primaryVtx")
 else:
     #unpacker
     scoutingTrackTag = cms.InputTag("")
     scoutingPVTag = cms.InputTag("")
+    scoutingPFTag = cms.InputTag("")
     pfCandTag = cms.InputTag("packedPFCandidates")
     lostTrackTag = cms.InputTag("lostTracks")
 
@@ -85,6 +87,7 @@ else:
 process.hltScoutingUnpackProducer = cms.EDProducer('HLTScoutingUnpackProducer',
   scoutingTrack = scoutingTrackTag,
   scoutingPrimaryVertex = scoutingPVTag,
+  scoutingParticle = scoutingPFTag,
   pfCand = pfCandTag,
   lostTrack = lostTrackTag,
   isScouting = cms.bool(options.isScouting),
@@ -104,12 +107,17 @@ process.triggerFilter = cms.EDFilter('TriggerFilter',
                                      crossSection = cms.double(options.crossSection), # cross section in fb
                                      l1Seeds           = cms.vstring(L1Info),
                                      pfjets            = pfjetsTag,
-                                     patjets           = patjetsTag,
-                                     generatorName = cms.InputTag('generator')
+                                     #patjets           = patjetsTag,
+                                     #generatorName = cms.InputTag('')
                                      )
 
 process.Vertexer = cms.EDProducer('Vertexer',
                                   seed_tracks_src = cms.InputTag('hltScoutingUnpackProducer', 'Track'),
+                                  pt_min_cut = cms.double(1.0),
+                                  dxySig_min_cut = cms.double(0.5),
+                                  dxySig_max_cut = cms.double(2.5), #Can be handy for control regions
+                                  npixelHits_min_cut = cms.int32(2),
+                                  ntrackerLayers_min_cut = cms.int32(5),
                                   #kvr_params = kvr_params,
                                   #do_track_refinement = cms.bool(False), # remove tracks + trim out tracks with IP significance larger than trackrefine_sigmacut and trackrefine_trimmax, respectively
                                   resolve_split_vertices_loose = cms.bool(False), # an alternative merging routine with `loose` criteria, to merge any nearby vertices within a given dist or significance
@@ -165,8 +173,8 @@ process.scoutingTree = cms.EDAnalyzer('ScoutingTreeMakerRun3',
                                       pfMetPhi          = cms.InputTag("hltScoutingPFPacker","pfMetPhi"),
                                       rho               = cms.InputTag("hltScoutingPFPacker","rho"),
                                       beamspot_src = cms.InputTag('offlineBeamSpot'),
-                                      genParticle_src = cms.InputTag('genParticles',''),
-                                      generatorName = cms.InputTag('generator')
+                                      #genParticle_src = cms.InputTag('genParticles',''),
+                                      #generatorName = cms.InputTag('generator')
                                       )
 
 # Usually it is better to put producers on a task instead of a path

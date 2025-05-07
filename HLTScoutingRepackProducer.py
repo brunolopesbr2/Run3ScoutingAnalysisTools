@@ -12,7 +12,7 @@ process.MessageLogger.cerr.FwkReport.reportEvery = 100
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(100) ) #100 events for offline testing
 
 process.source = cms.Source("PoolSource",
-                            fileNames = cms.untracked.vstring('file:scout_withRecoVertex.root',
+                            fileNames = cms.untracked.vstring('/store/user/brlopesd/ScoutingPFRun3/ScoutingData_Summer24_2024D_WithVertex_1Mevts_v1/250331_150630/0000/scout_withRecoVertex_3.root',
                             )
 )
 

@@ -33,6 +33,10 @@ process.load("TrackingTools.TransientTrack.TransientTrackBuilder_cfi")
 
 # Input tags to the EDProducer
 process.Vertexer = cms.EDProducer('Vertexer',
+                                  pt_min_cut = cms.double(1),
+                                  dxySig_min_cut = cms.double(2),
+                                  npixelHits_min_cut = cms.int32(2),
+                                  ntrackerLayers_min_cut = cms.int32(5),
                                   seed_tracks_src = cms.InputTag('hltScoutingUnpackProducer', 'Track'),
                                   #kvr_params = kvr_params,
                                   #do_track_refinement = cms.bool(False), # remove tracks + trim out tracks with IP significance larger than trackrefine_sigmacut and trackrefine_trimmax, respectively   
@@ -59,7 +63,7 @@ process.Vertexer = cms.EDProducer('Vertexer',
                                   max_nm1_refit_count = cms.int32(-1),
                                   #trackrefine_sigmacut = cms.double(5), # track refinement criteria (*only* if do_track_refinement = True)
                                   #trackrefine_trimmax = cms.double(5), # track refinement criteria (*only* if do_track_refinement = True)
-                                  verbose = cms.bool(False),
+                                  verbose = cms.bool(True),
                                   )
 
 # Save only the scouting collections on the output file

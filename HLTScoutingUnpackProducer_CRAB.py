@@ -1,10 +1,7 @@
 from CRABClient.UserUtilities import config
 config = config()
 
-mass = "M-800"
-lifetime = "CTau-1mm"
-
-theTag = "StopStopbarTo2Dbar2D_"+mass+"_"+lifetime+ "_Summer24_InputToVertexer_v1"
+theTag = "ScoutingData_Summer24_2024D_InputToVertexer_1Mevts_v1"
 config.General.requestName = theTag
 
 config.JobType.pluginName = 'Analysis'
@@ -12,10 +9,11 @@ config.JobType.pluginName = 'Analysis'
 config.JobType.psetName = 'HLTScoutingUnpackProducer.py'
 #config.JobType.maxMemoryMB = 5000
 
-config.Data.inputDBS = 'phys03'
-config.Data.inputDataset = '/StopStopbarTo2Dbar2D_M-800_CTau-1mm_Summer24_100k_v1/brlopesd-StopStopbarTo2Dbar2D_M-800_CTau-1mm_Summer24_100k_v1-e5438bb52f42c4163dc01d5bb2e896e9/USER'
-config.Data.splitting = 'Automatic'
-#config.Data.unitsPerJob = 1
+config.Data.inputDBS = 'global'
+config.Data.inputDataset = '/ScoutingPFRun3/Run2024D-v1/HLTSCOUT'
+config.Data.splitting = 'EventAwareLumiBased'
+config.Data.totalUnits = 1000000
+config.Data.unitsPerJob = 10000
 config.Data.publication = True
 # This string is used to construct the output dataset name
 config.Data.outputDatasetTag = theTag
