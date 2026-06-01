@@ -62,11 +62,75 @@ inputDatasets = ["/QCD-4Jets_Bin-HT-200to400_TuneCP5_13p6TeV_madgraphMLM-pythia8
                  "/GluGluH-Hto2Sto4D_Par-ctauS-10-MH-125-MS-30_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
                  "/GluGluH-Hto2Sto4D_Par-ctauS-10-MH-125-MS-40_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
                  "/GluGluH-Hto2Sto4D_Par-ctauS-10-MH-125-MS-55_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
-                 "/GluGluH-Hto2Sto4D_Par-ctauS-10-MH-125-MS-7_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM"
+                 "/GluGluH-Hto2Sto4D_Par-ctauS-10-MH-125-MS-7_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
+                 "/StealthSHH_mStop-300_mSo-100_ctau-0p1mm100kEvts_v2/brlopesd-StealthSHH_mStop-300_mSo-100_ctau-0p1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-300_mSo-100_ctau-10mm100kEvts_v2/brlopesd-StealthSHH_mStop-300_mSo-100_ctau-10mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-300_mSo-100_ctau-1mm100kEvts_v2/brlopesd-StealthSHH_mStop-300_mSo-100_ctau-1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-300_mSo-100_ctau-3mm100kEvts_v2/brlopesd-StealthSHH_mStop-300_mSo-100_ctau-3mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-325_mSo-100_ctau-0p1mm100kEvts_v2/brlopesd-StealthSHH_mStop-325_mSo-100_ctau-0p1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-325_mSo-100_ctau-10mm100kEvts_v2/brlopesd-StealthSHH_mStop-325_mSo-100_ctau-10mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-325_mSo-100_ctau-1mm100kEvts_v2/brlopesd-StealthSHH_mStop-325_mSo-100_ctau-1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-325_mSo-100_ctau-3mm100kEvts_v2/brlopesd-StealthSHH_mStop-325_mSo-100_ctau-3mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-500_mSo-100_ctau-0p1mm100kEvts_v2/brlopesd-StealthSHH_mStop-500_mSo-100_ctau-0p1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-500_mSo-100_ctau-10mm100kEvts_v2/brlopesd-StealthSHH_mStop-500_mSo-100_ctau-10mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-500_mSo-100_ctau-1mm100kEvts_v2/brlopesd-StealthSHH_mStop-500_mSo-100_ctau-1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-500_mSo-100_ctau-3mm100kEvts_v2/brlopesd-StealthSHH_mStop-500_mSo-100_ctau-3mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-500_mSo-275_ctau-0p1mm100kEvts_v2/brlopesd-StealthSHH_mStop-500_mSo-275_ctau-0p1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-500_mSo-275_ctau-10mm100kEvts_v2/brlopesd-StealthSHH_mStop-500_mSo-275_ctau-10mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-500_mSo-275_ctau-1mm100kEvts_v2/brlopesd-StealthSHH_mStop-500_mSo-275_ctau-1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-500_mSo-275_ctau-3mm100kEvts_v2/brlopesd-StealthSHH_mStop-500_mSo-275_ctau-3mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-700_mSo-100_ctau-0p1mm100kEvts_v2/brlopesd-StealthSHH_mStop-700_mSo-100_ctau-0p1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-700_mSo-100_ctau-10mm100kEvts_v2/brlopesd-StealthSHH_mStop-700_mSo-100_ctau-10mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-700_mSo-100_ctau-1mm100kEvts_v2/brlopesd-StealthSHH_mStop-700_mSo-100_ctau-1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-700_mSo-100_ctau-3mm100kEvts_v2/brlopesd-StealthSHH_mStop-700_mSo-100_ctau-3mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-700_mSo-475_ctau-0p1mm100kEvts_v2/brlopesd-StealthSHH_mStop-700_mSo-475_ctau-0p1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-700_mSo-475_ctau-10mm100kEvts_v2/brlopesd-StealthSHH_mStop-700_mSo-475_ctau-10mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-700_mSo-475_ctau-1mm100kEvts_v2/brlopesd-StealthSHH_mStop-700_mSo-475_ctau-1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-700_mSo-475_ctau-3mm100kEvts_v2/brlopesd-StealthSHH_mStop-700_mSo-475_ctau-3mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-900_mSo-100_ctau-0p1mm100kEvts_v2/brlopesd-StealthSHH_mStop-900_mSo-100_ctau-0p1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-900_mSo-100_ctau-10mm100kEvts_v2/brlopesd-StealthSHH_mStop-900_mSo-100_ctau-10mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-900_mSo-100_ctau-1mm100kEvts_v2/brlopesd-StealthSHH_mStop-900_mSo-100_ctau-1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-900_mSo-100_ctau-3mm100kEvts_v2/brlopesd-StealthSHH_mStop-900_mSo-100_ctau-3mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-900_mSo-675_ctau-0p1mm100kEvts_v2/brlopesd-StealthSHH_mStop-900_mSo-675_ctau-0p1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-900_mSo-675_ctau-10mm100kEvts_v2/brlopesd-StealthSHH_mStop-900_mSo-675_ctau-10mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-900_mSo-675_ctau-1mm100kEvts_v2/brlopesd-StealthSHH_mStop-900_mSo-675_ctau-1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSHH_mStop-900_mSo-675_ctau-3mm100kEvts_v2/brlopesd-StealthSHH_mStop-900_mSo-675_ctau-3mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-300_mSo-100_ctau-0p1mm100kEvts_v2/brlopesd-StealthSYY_mStop-300_mSo-100_ctau-0p1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-300_mSo-100_ctau-10mm100kEvts_v2/brlopesd-StealthSYY_mStop-300_mSo-100_ctau-10mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-300_mSo-100_ctau-1mm100kEvts_v2/brlopesd-StealthSYY_mStop-300_mSo-100_ctau-1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-300_mSo-100_ctau-3mm100kEvts_v2/brlopesd-StealthSYY_mStop-300_mSo-100_ctau-3mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-325_mSo-100_ctau-0p1mm100kEvts_v2/brlopesd-StealthSYY_mStop-325_mSo-100_ctau-0p1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-325_mSo-100_ctau-10mm100kEvts_v2/brlopesd-StealthSYY_mStop-325_mSo-100_ctau-10mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-325_mSo-100_ctau-1mm100kEvts_v2/brlopesd-StealthSYY_mStop-325_mSo-100_ctau-1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-325_mSo-100_ctau-3mm100kEvts_v2/brlopesd-StealthSYY_mStop-325_mSo-100_ctau-3mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-500_mSo-100_ctau-0p1mm100kEvts_v2/brlopesd-StealthSYY_mStop-500_mSo-100_ctau-0p1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-500_mSo-100_ctau-10mm100kEvts_v2/brlopesd-StealthSYY_mStop-500_mSo-100_ctau-10mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-500_mSo-100_ctau-1mm100kEvts_v2/brlopesd-StealthSYY_mStop-500_mSo-100_ctau-1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-500_mSo-100_ctau-3mm100kEvts_v2/brlopesd-StealthSYY_mStop-500_mSo-100_ctau-3mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-500_mSo-275_ctau-0p1mm100kEvts_v2/brlopesd-StealthSYY_mStop-500_mSo-275_ctau-0p1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-500_mSo-275_ctau-10mm100kEvts_v2/brlopesd-StealthSYY_mStop-500_mSo-275_ctau-10mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-500_mSo-275_ctau-1mm100kEvts_v2/brlopesd-StealthSYY_mStop-500_mSo-275_ctau-1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-500_mSo-275_ctau-3mm100kEvts_v2/brlopesd-StealthSYY_mStop-500_mSo-275_ctau-3mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-700_mSo-100_ctau-0p1mm100kEvts_v2/brlopesd-StealthSYY_mStop-700_mSo-100_ctau-0p1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-700_mSo-100_ctau-10mm100kEvts_v2/brlopesd-StealthSYY_mStop-700_mSo-100_ctau-10mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-700_mSo-100_ctau-1mm100kEvts_v2/brlopesd-StealthSYY_mStop-700_mSo-100_ctau-1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-700_mSo-100_ctau-3mm100kEvts_v2/brlopesd-StealthSYY_mStop-700_mSo-100_ctau-3mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-700_mSo-475_ctau-0p1mm100kEvts_v2/brlopesd-StealthSYY_mStop-700_mSo-475_ctau-0p1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-700_mSo-475_ctau-10mm100kEvts_v2/brlopesd-StealthSYY_mStop-700_mSo-475_ctau-10mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-700_mSo-475_ctau-1mm100kEvts_v2/brlopesd-StealthSYY_mStop-700_mSo-475_ctau-1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-700_mSo-475_ctau-3mm100kEvts_v2/brlopesd-StealthSYY_mStop-700_mSo-475_ctau-3mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-900_mSo-100_ctau-0p1mm100kEvts_v2/brlopesd-StealthSYY_mStop-900_mSo-100_ctau-0p1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-900_mSo-100_ctau-10mm100kEvts_v2/brlopesd-StealthSYY_mStop-900_mSo-100_ctau-10mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-900_mSo-100_ctau-1mm100kEvts_v2/brlopesd-StealthSYY_mStop-900_mSo-100_ctau-1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-900_mSo-100_ctau-3mm100kEvts_v2/brlopesd-StealthSYY_mStop-900_mSo-100_ctau-3mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-900_mSo-675_ctau-0p1mm100kEvts_v2/brlopesd-StealthSYY_mStop-900_mSo-675_ctau-0p1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-900_mSo-675_ctau-10mm100kEvts_v2/brlopesd-StealthSYY_mStop-900_mSo-675_ctau-10mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-900_mSo-675_ctau-1mm100kEvts_v2/brlopesd-StealthSYY_mStop-900_mSo-675_ctau-1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StealthSYY_mStop-900_mSo-675_ctau-3mm100kEvts_v2/brlopesd-StealthSYY_mStop-900_mSo-675_ctau-3mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
                  ]
 
 crossSections = [1961000000, 95620000, 13540000, 3033000, 883700, 383500, 125200, 26490, 311400000000, 58500000000, 25400000000, 762100, 762100] #Backgrounds should go first in dataset list with corresponding cross sections listed here
-tagSuffix = "v24-3to4Dxy-OnlineBS"
+tagSuffix = "v30-3to4Dxy"
 scouting = True
 
 for i in range(len(inputDatasets)):
@@ -83,6 +147,9 @@ for i in range(len(inputDatasets)):
     elif ("ScoutingPF" in dataset):
         crossSection = 1
         PUFile = "empty.npy"
+    elif ("Stealth" in dataset):
+        crossSection = 1
+        PUFile = "Stop-M200-cT1_PURatio_Full2024.npy"
     else:
         crossSection = 1
         mass = dataset.split("-")[1]
@@ -93,7 +160,7 @@ for i in range(len(inputDatasets)):
             PUFile = "Stop-M200-cT1_PURatio_Full2024.npy"
         else:
             PUFile = f"Stop-M{mass}-cT{lifetime}_PURatio_Full2024.npy"
-    if "Stop" in dataset:
+    if "StopStop" in dataset:
         tag = ""
         if ("step4" in dataset):
             tag = dataset[1:].split("_100kEvts")[0] + "_Tree_" + tagSuffix
@@ -108,11 +175,26 @@ for i in range(len(inputDatasets)):
     elif "ScoutingPF" in dataset:
         tag = dataset[16:].split("-v1")[0] + "_Tree_" + tagSuffix
         dataBase = "global"
-        totalUnits = 900000000
+        #totalUnits = 900000000
         isMC = False
         hasReco = False
-        unitsPerJob = 150000
-        splitting = 'EventAwareLumiBased'
+        unitsPerJob = 10
+        splitting = 'LumiBased'
+        if "2024C" in dataset:
+            totalUnits = 24298
+        elif "2024D" in dataset:
+            totalUnits = 23251
+        elif "2024E" in dataset:
+            totalUnits = 31576
+        elif "2024F" in dataset:
+            totalUnits = 70035
+        elif "2024G" in dataset:
+            totalUnits = 92654
+        elif "2024H" in dataset:
+            totalUnits = 13078
+        elif "2024I" in dataset:
+            totalUnits = 27112
+            
     elif "GluGluH" in dataset:
         tag = dataset[1:].split("_Tune")[0] + "_Tree_" + tagSuffix
         dataBase = "global"
@@ -120,6 +202,14 @@ for i in range(len(inputDatasets)):
         isMC = True
         hasReco = True
         unitsPerJob = 100000
+        splitting = 'EventAwareLumiBased'
+    elif "Stealth" in dataset:
+        tag = tag = dataset[1:].split("100kEvts")[0] + "_Tree_" + tagSuffix            
+        dataBase = "phys03"
+        totalUnits = 120000
+        isMC = True
+        hasReco = True
+        unitsPerJob = 60000
         splitting = 'EventAwareLumiBased'
     else:
         tag = dataset[1:].split("_Tune")[0] + "_Tree_" + tagSuffix
@@ -136,6 +226,7 @@ config.General.requestName = theTag \n
 config.JobType.pluginName = 'Analysis' \n
 config.JobType.psetName = '../VertexNTupleMaker.py' \n
 config.JobType.inputFiles = ['/afs/cern.ch/user/r/rmccarth/private/scouting/CMSSW_14_0_18_patch1/src/Run3ScoutingAnalysisTools/Summer24Prompt24_RunBCDEFGHI.root'] \n
+config.JobType.maxMemoryMB = 2500 \n
 config.Data.inputDBS = '{dataBase}' \n
 config.Data.inputDataset = '{dataset}' \n
 config.Data.splitting = '{splitting}' \n
@@ -143,7 +234,7 @@ config.Data.unitsPerJob = {unitsPerJob} \n
 config.Data.totalUnits = {totalUnits} \n
 config.Data.allowNonValidInputDataset = True \n
 config.Data.publication = False \n
-config.JobType.pyCfgParams = ['isScouting={scouting}','lumi=114.44','crossSection={crossSection}','isMC={isMC}','hasReco={hasReco}','PUFile=/afs/cern.ch/user/r/rmccarth/private/scouting/CMSSW_14_0_18_patch1/src/Run3ScoutingAnalysisTools/{PUFile}','doJEC=False'] \n
+config.JobType.pyCfgParams = ['isScouting={scouting}','lumi=109.99','crossSection={crossSection}','isMC={isMC}','hasReco={hasReco}','PUFile=/afs/cern.ch/user/r/rmccarth/private/scouting/CMSSW_14_0_18_patch1/src/Run3ScoutingAnalysisTools/{PUFile}','doJEC=True'] \n
 config.Data.outputDatasetTag = theTag \n
 config.Data.outLFNDirBase = '/store/group/phys_exotica/DVScouting' \n
 config.Site.storageSite = 'T2_CH_CERN' \n
@@ -152,7 +243,7 @@ config.Site.whitelist = ['T2_*', 'T1_*'] \n
 """ 
 
     # Write to a temporary file
-    if "Stop" in dataset:
+    if "StopStop" in dataset:
         #string += """config.Site.whitelist = ['T2_CH_CERN'] \n
 #config.Data.ignoreLocality = True"""
         if ("step4" in dataset):
@@ -165,6 +256,9 @@ config.Site.whitelist = ['T2_*', 'T1_*'] \n
         string += f"""config.Data.lumiMask = '../GoldenJSON/2024' + '{dataset[23]}' + '_Golden.json'"""
         with open("crabSubmitScripts/"+dataset[16:].split("-v1")[0]+"_crabConfig.py", "w") as f:
             f.write(string)
+    elif "Stealth" in dataset:
+        with open("crabSubmitScripts/"+dataset[1:].split("100kEvts")[0]+"_crabConfig.py", "w") as f:
+                f.write(string)
     else:
         with open("crabSubmitScripts/"+dataset[1:].split("_Tune")[0]+"_crabConfig.py", "w") as f:
             f.write(string)
