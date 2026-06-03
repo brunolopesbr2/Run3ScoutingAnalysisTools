@@ -44,6 +44,7 @@
 #include "DataFormats/Common/interface/Handle.h"
 #include "DataFormats/TrackReco/interface/Track.h"
 #include "DataFormats/TrackReco/interface/TrackFwd.h"
+#include "DataFormats/Math/interface/deltaR.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
 #include "SimDataFormats/TrackingAnalysis/interface/TrackingParticle.h"
@@ -118,6 +119,9 @@ private:
   const edm::EDGetTokenT<std::vector<reco::PFJet>> movedJetsToken_;
   const edm::EDGetTokenT<std::vector<double>> flightAxisToken_;
   double matchVertexDistance;
+  bool isMC;
+  const edm::EDGetTokenT<std::map<std::string, float>> weightsToken_;
+  const edm::ESGetToken<BeamSpotOnlineObjects, BeamSpotOnlineHLTObjectsRcd> bsOnlineToken_;
 
   //Auxiliary Variables
   TTree* objectTree;
@@ -163,6 +167,9 @@ private:
   std::vector<double> vertices_z;
   std::vector<double> vertices_dBV;
 
+  double LLP_dR;
+  double LLP_PtSum;
+
   //event level
   int nVertices;
   int nMovedTracks;
@@ -171,7 +178,41 @@ private:
   int nPV;
   bool matchedVertex;
 
+  int nMatchedVertices;
+  double matchedVert_chi2;
+  double matchedVert_cosT;
+  int matchedVert_nTracks;
+
+  double matchedVert_dBV;
+  double matchedVert_dBVerr;
+
+  double weight;
+  double weight_noTrigger;
+  double genWeight;
+
   //Auxiliary functions
+
+  typedef std::set<reco::TrackRef> track_set;
+  typedef std::vector<reco::TrackRef> track_vec;
+
+  track_set vertex_track_set(const reco::Vertex & v, const double min_weight = 0.5) const {
+    track_set result;
+    
+    for (auto it = v.tracks_begin(), ite = v.tracks_end(); it != ite; ++it) {
+      const double w = v.trackWeight(*it);
+      const bool use = w >= min_weight;
+      assert(use);
+      if (use)
+	      result.insert(it->castTo<reco::TrackRef>());
+    }
+    
+    return result;
+  }
+  
+  track_vec vertex_track_vec(const reco::Vertex & v, const double min_weight = 0.5) const {
+    track_set s = vertex_track_set(v, min_weight);
+    return track_vec(s.begin(), s.end());
+  }
 
 };
 
@@ -198,7 +239,10 @@ VertexEffAnalyzer::VertexEffAnalyzer(const edm::ParameterSet& iConfig)
     nPreselJetsToken_(consumes<int>(iConfig.getParameter<edm::InputTag>("n_presel_jets"))),
     movedJetsToken_(consumes<std::vector<reco::PFJet>>(iConfig.getParameter<edm::InputTag>("moved_jets"))),
     flightAxisToken_(consumes<std::vector<double>>(iConfig.getParameter<edm::InputTag>("flight_axis"))),
-    matchVertexDistance(iConfig.getParameter<double>("matchVertexDistance"))
+    matchVertexDistance(iConfig.getParameter<double>("matchVertexDistance")),
+    isMC(iConfig.existsAs<bool>("isMC") ?  iConfig.getParameter<bool>  ("isMC") : false),
+    weightsToken_(consumes<std::map<std::string, float>>(edm::InputTag("triggerFilter", "weightMap"))),
+    bsOnlineToken_(esConsumes<BeamSpotOnlineObjects, BeamSpotOnlineHLTObjectsRcd>())
     {}
 
 VertexEffAnalyzer::~VertexEffAnalyzer() {
@@ -245,6 +289,43 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   unmovedTracks_dxy.clear();
   unmovedTracks_dz.clear();
 
+  //get online beamspot
+  const auto& bs = iSetup.getData(bsOnlineToken_);
+  reco::BeamSpot::CovarianceMatrix onlineCovariance;
+  for(uint i=0; i<7; i++){
+    for(uint j=i; j<7; j++){
+      onlineCovariance(i,j) = bs.covariance(i,j);
+    }
+  }
+  reco::BeamSpot::Point onlinePosition(bs.x(), bs.y(), bs.z());
+  reco::BeamSpot* beamspot = new reco::BeamSpot(onlinePosition,
+					 bs.sigmaZ(),
+					 bs.dxdz(),
+					 bs.dydz(),
+					 bs.beamWidthX(),
+					 onlineCovariance,
+					 static_cast<reco::BeamSpot::BeamType>(bs.beamType())
+					 );
+  beamspot->setBeamWidthY(bs.beamWidthY());
+  beamspot->setEmittanceX(bs.emittanceX());
+  beamspot->setEmittanceY(bs.emittanceY());
+  beamspot->setbetaStar(bs.betaStar());
+
+  const reco::Vertex fake_bs_vtx(beamspot->position(), beamspot->covariance3D());
+
+  if(isMC){
+    edm::Handle<std::map<std::string, float>> weightMap;
+    iEvent.getByToken(weightsToken_, weightMap);
+    weight = weightMap->at("correctedNominal");
+    weight_noTrigger = weightMap->at("corrected_NoTrigger");
+    genWeight = weightMap->at("GEN");
+  }
+  else{
+    weight = 1;
+    weight_noTrigger = 1;
+    genWeight = 1;
+  }
+
   edm::Handle<reco::VertexCollection> primaryVerticesH;
   iEvent.getByToken(primary_vertices_token, primaryVerticesH);
 
@@ -267,6 +348,8 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     moveVertex_y = moveVertexH->at(1);
     moveVertex_z = moveVertexH->at(2);
 
+    moveVertex_dBV = TMath::Sqrt(pow(moveVertex_x - fake_bs_vtx.x(), 2) + pow(moveVertex_y - fake_bs_vtx.y(), 2));
+
     //std::cout<<"Analyser sees move vertex x as: "<<moveVertex_x<<std::endl;
   }
 
@@ -274,9 +357,28 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     moveVertex_x = 0;
     moveVertex_y = 0;
     moveVertex_z = 0;
+    moveVertex_dBV = 0;
   }
 
   matchedVertex = false;
+  matchedVert_nTracks = 0;
+  matchedVert_chi2 = 0;
+  matchedVert_cosT = 0;
+  matchedVert_dBV = 0;
+  matchedVert_dBVerr = 0;
+
+  int v_idx = 0;
+  nMatchedVertices = 0;
+
+  reco::Vertex v;
+
+  LLP_dR = 0;
+  LLP_PtSum = 0;
+
+  Measurement1D dBV_measurement;
+  VertexDistanceXY vertex_dist_2d;
+
+  
 
   if(verticesH.isValid() && moveVertexH.isValid()){
     nVertices = verticesH->size();
@@ -289,6 +391,36 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
       if (vertexDist < matchVertexDistance){
         matchedVertex = true;
+        nMatchedVertices++;
+
+        v = verticesH->at(v_idx);
+        if (vertex_track_vec(v).size() > static_cast<size_t>(matchedVert_nTracks)) {
+          matchedVert_nTracks = vertex_track_vec(v).size();
+
+          float p_tot[3] = {0.0, 0.0, 0.0};
+          std::vector<reco::TrackRef> trks = vertex_track_vec(v);
+
+          for (size_t i = 0; i < trks.size(); ++i) {
+            for (size_t j = i + 1; j < trks.size(); ++j) {
+                double tmp_dR = reco::deltaR(trks[i]->eta(), trks[i]->phi(), trks[j]->eta(), trks[j]->phi());
+                if (tmp_dR > LLP_dR) LLP_dR = tmp_dR;
+            }
+            LLP_PtSum = LLP_PtSum + trks[i]->pt();
+          }
+
+          for(auto trk:trks){
+            p_tot[0] += trk->px();
+            p_tot[1] += trk->py();
+            p_tot[2] += trk->pz();
+          }
+
+          matchedVert_cosT = ( p_tot[0]*(v.x()-beamspot->x0())+p_tot[1]*(v.y()-beamspot->y0())) / (sqrt(pow(p_tot[0],2)+pow(p_tot[1],2))*sqrt(pow(v.x()-beamspot->x0(),2)+pow(v.y()-beamspot->y0(),2)) );
+          matchedVert_chi2 = v.normalizedChi2();
+          dBV_measurement = vertex_dist_2d.distance(v, fake_bs_vtx);
+          matchedVert_dBV = dBV_measurement.value();
+          matchedVert_dBVerr = dBV_measurement.error();
+        }
+
       }
     }
   }
@@ -326,6 +458,7 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     }
   }
 
+  nMovedTracks = 0;
   if(movedTracksH.isValid()){
     for (auto movedTracks_iter = movedTracksH->begin(); movedTracks_iter != movedTracksH->end(); ++movedTracks_iter) {
       movedTracks_pt.push_back(movedTracks_iter->pt());
@@ -333,6 +466,7 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
       movedTracks_phi.push_back(movedTracks_iter->phi());
       movedTracks_dxy.push_back(movedTracks_iter->dxy());
       movedTracks_dz.push_back(movedTracks_iter->dz());
+      nMovedTracks++;
     }
   }
 
@@ -355,6 +489,10 @@ void VertexEffAnalyzer::beginJob() {
 
   edm::Service<TFileService> fs;
   objectTree = fs->make<TTree>("objectTree","objectTree");
+
+  objectTree->Branch("weight", &weight, "weight/D");
+  objectTree->Branch("weight_noTrigger", &weight_noTrigger, "weight_noTrigger/D");
+  objectTree->Branch("genWeight", &genWeight, "genWeight/D");
 
   objectTree->Branch("originalTracks_pt",&originalTracks_pt);
   objectTree->Branch("originalTracks_eta",&originalTracks_eta);
@@ -380,21 +518,31 @@ void VertexEffAnalyzer::beginJob() {
   objectTree->Branch("unmovedTracks_dxy",&unmovedTracks_dxy);
   objectTree->Branch("unmovedTracks_dz",&unmovedTracks_dz);
 
-  objectTree->Branch("moveVertex_x", &moveVertex_x, "moveVertex_x/F");
-  objectTree->Branch("moveVertex_y", &moveVertex_y, "moveVertex_y/F");
-  objectTree->Branch("moveVertex_z", &moveVertex_z, "moveVertex_z/F");
+  objectTree->Branch("nMovedTracks", &nMovedTracks, "nMovedTracks/I");
 
-  objectTree->Branch("primaryVertex_x", &primaryVertex_x, "primaryVertex_x/F");
-  objectTree->Branch("primaryVertex_y", &primaryVertex_y, "primaryVertex_y/F");
-  objectTree->Branch("primaryVertex_z", &primaryVertex_z, "primaryVertex_z/F");
+  objectTree->Branch("moveVertex_x", &moveVertex_x, "moveVertex_x/D");
+  objectTree->Branch("moveVertex_y", &moveVertex_y, "moveVertex_y/D");
+  objectTree->Branch("moveVertex_z", &moveVertex_z, "moveVertex_z/D");
+  objectTree->Branch("moveVertex_dBV", &moveVertex_dBV, "moveVertex_dBV/D");
+
+  objectTree->Branch("primaryVertex_x", &primaryVertex_x, "primaryVertex_x/D");
+  objectTree->Branch("primaryVertex_y", &primaryVertex_y, "primaryVertex_y/D");
+  objectTree->Branch("primaryVertex_z", &primaryVertex_z, "primaryVertex_z/D");
 
   objectTree->Branch("nPV", &nPV, "nPV/I");
   objectTree->Branch("nVertices", &nVertices, "nVertices/I");
 
   objectTree->Branch("matchedVertex", &matchedVertex, "matchedVertex/O");
+  objectTree->Branch("nMatchedVertices", &nMatchedVertices, "nMatchedVertices/I");
 
+  objectTree->Branch("matchedVertex_nTracks", &matchedVert_nTracks, "matchedVert_nTracks/I");
+  objectTree->Branch("matchedVertex_cosT", &matchedVert_cosT, "matchedVert_cosT/D");
+  objectTree->Branch("matchedVertex_chi2", &matchedVert_chi2, "matchedVert_chi2/D");
+  objectTree->Branch("matchedVertex_dBV", &matchedVert_dBV, "matchedVert_dBV/D");
+  objectTree->Branch("matchedVertex_dBVerr", &matchedVert_dBVerr, "matchedVert_dBVerr/D");
 
-  
+  objectTree->Branch("LLP_dR", &LLP_dR, "LLP_dR/D");
+  objectTree->Branch("LLP_PtSum", &LLP_PtSum, "LLP_PtSum/D");
 }
 
 // ------------ method called once each job just after ending the event loop  ------------

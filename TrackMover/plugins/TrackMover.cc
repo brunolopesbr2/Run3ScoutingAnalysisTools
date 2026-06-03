@@ -313,6 +313,20 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
     if (to_move){
 
       //can add quality criteria for the tracks here
+      //move only quality tracks 
+      const double pt = tracks_iter->pt();
+      const int npxlayers = tracks_iter->hitPattern().pixelLayersWithMeasurement();
+      const int nstlayers = tracks_iter->hitPattern().stripLayersWithMeasurement();
+      const auto trackLostInnerHits = tracks_iter->hitPattern().numberOfLostHits(reco::HitPattern::MISSING_INNER_HITS);
+      int min_r = 2000000000;
+      for (int i = 1; i <= 4; ++i){
+          if (tracks_iter->hitPattern().hasValidHitInPixelLayer(PixelSubdetector::PixelBarrel,i)) {
+            min_r = i;
+            break;
+          }
+      }
+      if (!(pt > 1.0 && npxlayers >= 2 && nstlayers >= 6 && (min_r <= 1.0 || (min_r == 2.0 && trackLostInnerHits == 0) ))) continue;
+      
       
       if (rint.fire(1,track_keep_prob) == 0) continue; //To toss out a track randomly 
 
@@ -327,7 +341,7 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
       reco::Track& new_tk = output_tracks->back();
       new_tk.setQualityMask(tracks_iter->qualityMask());
       new_tk.setNLoops(tracks_iter->nLoops());
-      reco::HitPattern* hp = const_cast<reco::HitPattern*>(&new_tk.hitPattern());  *hp = tracks_iter->hitPattern(); // JMTFUNNY
+      reco::HitPattern* hp = const_cast<reco::HitPattern*>(&new_tk.hitPattern());  *hp = tracks_iter->hitPattern(); 
       moved_tracks->push_back(new_tk);
     }
     else {
