@@ -84,6 +84,13 @@ options.register('doJEC',
                  "If HLT jet corrections are applied"
 )
 
+options.register('useLooseJets',
+                 False,
+                 VarParsing.VarParsing.multiplicity.singleton,
+                 VarParsing.VarParsing.varType.bool,
+                 "Whether to select loose or tight jets on the EventSkim"
+)
+
 options.register('validation',
                  True,
                  VarParsing.VarParsing.multiplicity.singleton,
@@ -103,7 +110,7 @@ process.options = cms.untracked.PSet(
 process.MessageLogger.cerr.FwkSummary.reportEvery = 100
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(10000) )
 PUCorrectionData = np.load(options.PUFile)
 UncertaintyCorrectionData = np.load(options.UncertaintyCorrectionFile)
 
@@ -133,6 +140,8 @@ process.source = cms.Source("PoolSource",
         #'/store/user/brlopesd/StopStopbarTo2Dbar2D_M-400_ctau-0p1mm_100kEvts_v2/StopStopbarTo2Dbar2D_M-400_ctau-0p1mm_100kEvts_step4_miniAOD_v1/260106_122558/0000/MiniAOD_1.root'
         #Exotic Higgs sample
         '/store/mc/RunIII2024Summer24MiniAOD/GluGluH-Hto2Sto4D_Par-ctauS-10-MH-125-MS-15_TuneCP5_13p6TeV_powheg-pythia8/MINIAODSIM/140X_mcRun3_2024_realistic_v26-v2/2550000/009d9b72-008a-4d88-bbb2-79f9a66778fd.root'
+        #StealthSUSY sample
+        #'/store/user/brlopesd/StealthSHH_mStop-300_mSo-100_ctau-0p1mm100kEvts_v2/StealthSHH_mStop-300_mSo-100_ctau-0p1mm_step4-miniAOD_100kEvts_v4/251208_232301/0000/MiniAOD_1.root'
     )
 )
 
@@ -204,7 +213,10 @@ if(options.isScouting):
         patjetsTag = cms.InputTag("")
 
     #tree maker
-    skimPFJetsTag = cms.InputTag("triggerFilter","pfjets")
+    if(options.useLooseJets):
+        skimPFJetsTag = cms.InputTag("triggerFilter","pfjetsLoose")
+    else:
+        skimPFJetsTag = cms.InputTag("triggerFilter","pfjets")
     skimPatJetsTag = cms.InputTag("")
     pvTag = cms.InputTag("hltScoutingUnpackProducer","PrimaryVertex")
 else:
@@ -313,6 +325,7 @@ process.triggerFilter = cms.EDFilter('TriggerFilter',
                                      triggerUp = cms.vdouble(*TriggerCorrectionUp.flatten().tolist()),
                                      triggerDown = cms.vdouble(*TriggerCorrectionDown.flatten().tolist()),
                                      triggerEdge = cms.vdouble(*TriggerCorrectionBinEdge.flatten().tolist()),
+                                     useLooseJets = cms.bool(options.useLooseJets),
                                      val = cms.bool(options.validation)
                                      )
 
@@ -400,7 +413,7 @@ process.scoutingTree = cms.EDAnalyzer('ScoutingTreeMakerRun3',
                                       scoutingParticle = scoutingPFTag,
                                       weightMap = cms.InputTag("triggerFilter", "weightMap"),
                                       val = cms.bool(options.validation),
-                                      LLP_pdgId = cms.int32(1000006) #1000006 for stop, 9000006 for the exotic Higgs decay
+                                      LLP_pdgId = cms.int32(5000001) #1000006 for stop, 9000006 for the exotic Higgs decay, 5000001 for StealthSUSY
                                       )
 # Usually it is better to put producers on a task instead of a path
 # but paths also work.
