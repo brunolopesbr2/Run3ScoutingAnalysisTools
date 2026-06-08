@@ -1058,7 +1058,6 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
   iEvent.getByToken(pfjetsToken, pfjetsH);
   std::vector<reco::PFJet> pfJetVector;
   
-  //Require 4 PF Jets
   if(pfjetsH.isValid() && isScouting){
     for (auto jets_iter = pfjetsH->begin(); jets_iter != pfjetsH->end(); ++jets_iter) {
       pfJetVector.push_back(*jets_iter);      
@@ -1406,10 +1405,12 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
  if(isMC && doGenMatching){
     iEvent.getByToken(GenParticleToken_,genParticle_handle);
 
-   /* //debugging printouts 
+    /* //debugging printouts 
     for(genParticleIter = genParticle_handle->begin(); genParticleIter != genParticle_handle->end(); ++genParticleIter){
         if(abs(genParticleIter->pdgId()) == LLP_pdgId || 
           abs(genParticleIter->pdgId()) == 25 ||  // Higgs
+          abs(genParticleIter->pdgId()) == 5000001 ||  // Stealth singlino
+          abs(genParticleIter->pdgId()) == 5000002 ||  // Stealth singlet
           abs(genParticleIter->pdgId()) == 1) {    // down quarks
             std::cout << "pdgId: " << genParticleIter->pdgId()
                       << " status: " << genParticleIter->status()
@@ -1434,10 +1435,20 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
       if(!genParticleIter->daughter(0) || !genParticleIter->daughter(1)) continue;
 
       // require explicitly the LLP decays to be quarks, filters spurirous R-hadron vertices
-      if(abs(genParticleIter->daughter(0)->pdgId()) < 1 || 
-         abs(genParticleIter->daughter(0)->pdgId()) > 6) continue;
-      if(abs(genParticleIter->daughter(1)->pdgId()) < 1 || 
-         abs(genParticleIter->daughter(1)->pdgId()) > 6) continue;
+      // except for the StealthSUSY case, where the LLP singlino decays to singlet + gravitino
+      if(LLP_pdgId == 5000001){
+        if(abs(genParticleIter->daughter(0)->pdgId()) != 5000002 &&
+           abs(genParticleIter->daughter(0)->pdgId()) != 1000039) continue;
+        if(abs(genParticleIter->daughter(1)->pdgId()) != 5000002 &&
+           abs(genParticleIter->daughter(1)->pdgId()) != 1000039) continue;
+      }
+      else{
+        if(abs(genParticleIter->daughter(0)->pdgId()) < 1 || 
+          abs(genParticleIter->daughter(0)->pdgId()) > 6) continue;
+        if(abs(genParticleIter->daughter(1)->pdgId()) < 1 || 
+          abs(genParticleIter->daughter(1)->pdgId()) > 6) continue;
+      }
+
 
       // displaced vertex position comes from the daughter
       GlobalPoint genVertex(genParticleIter->daughter(0)->vx(),
