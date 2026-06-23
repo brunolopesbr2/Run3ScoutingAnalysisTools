@@ -400,6 +400,7 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
           float p_tot[3] = {0.0, 0.0, 0.0};
           std::vector<reco::TrackRef> trks = vertex_track_vec(v);
 
+          LLP_PtSum = 0;
           for (size_t i = 0; i < trks.size(); ++i) {
             for (size_t j = i + 1; j < trks.size(); ++j) {
                 double tmp_dR = reco::deltaR(trks[i]->eta(), trks[i]->phi(), trks[j]->eta(), trks[j]->phi());
@@ -420,8 +421,8 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
           matchedVert_dBV = dBV_measurement.value();
           matchedVert_dBVerr = dBV_measurement.error();
         }
-
       }
+      v_idx++;
     }
   }
 
