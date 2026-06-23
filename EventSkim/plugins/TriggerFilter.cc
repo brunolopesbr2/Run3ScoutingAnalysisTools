@@ -103,6 +103,8 @@ class TriggerFilter : public edm::one::EDFilter<edm::one::SharedResources, edm::
       TH1D* h_weights_LUMCorrected;
       TH1D* h_weightsSquared_LUMCorrected;
 
+      TH1D* h_jetAcceptance;
+
       TTree* tree;
       std::vector<float>* genJet_pt;
       std::vector<float>* genJet_eta;
@@ -297,6 +299,8 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   //New jet recommendations -- see https://cms-hlt-scouting.docs.cern.ch/DataAnalysis/JME/#recommendations-for-the-136-tev-scouting-data-analysis-runs-2024-c-i
 
+  int nJetsTotal = 0;
+
   if(pfjetsH.isValid() && isScouting){
     for (auto jets_iter = pfjetsH->begin(); jets_iter != pfjetsH->end(); ++jets_iter) {
       if (jets_iter->pt() > 30) {
@@ -304,12 +308,15 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
         int binY = jetVetoMap_->GetYaxis()->FindBin(jets_iter->phi());
         float maskBit = jetVetoMap_->GetBinContent(binX, binY);
 
-        float energy = TMath::Sqrt(pow(TMath::CosH(jets_iter->eta())*jets_iter->pt(),2)+pow(jets_iter->mass(),2));
-        //float Jet_chHEF = jets_iter->chargedHadronEnergy()/energy;
+        //float energy = TMath::Sqrt(pow(TMath::CosH(jets_iter->eta())*jets_iter->pt(),2)+pow(jets_iter->mass(),2));
+        float energy = jets_iter->chargedHadronEnergy() + jets_iter->neutralHadronEnergy() + jets_iter->muonEnergy() + jets_iter->electronEnergy() + jets_iter->photonEnergy() + jets_iter->HFEMEnergy();
+        
+        float Jet_chHEF = jets_iter->chargedHadronEnergy()/energy;
         float Jet_neHEF = jets_iter->neutralHadronEnergy()/energy;
         float Jet_muEF = jets_iter->muonEnergy()/energy;
-        //float Jet_chEmEF = jets_iter->electronEnergy()/energy;
+        float Jet_chEmEF = jets_iter->electronEnergy()/energy;
         float Jet_neEmEF = (jets_iter->photonEnergy()+jets_iter->HFEMEnergy())/energy;
+
         int Jet_chMultiplicity = jets_iter->chargedHadronMultiplicity()+jets_iter->electronMultiplicity()+jets_iter->muonMultiplicity();
         int Jet_neMultiplicity = jets_iter->neutralHadronMultiplicity()+jets_iter->photonMultiplicity()+jets_iter->HFHadronMultiplicity()+jets_iter->HFEMMultiplicity();
 
@@ -344,9 +351,9 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
           pfJetVectorLoose->emplace_back(*jets_iter);
         }
 
+        nJetsTotal++;
       }
     }
-
     if(useLooseJets) {
       nPFJets = pfJetVectorLoose->size();
     }
@@ -354,7 +361,6 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
       nPFJets = pfJetVector->size();
     }
   }
-
   
   Handle<std::vector<Run3ScoutingMuon> > muonsH;
   iEvent.getByToken(muonsToken, muonsH);
@@ -493,7 +499,20 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
     h_weights->Fill("None",theWeight);
     h_weightsSquared->Fill("None",pow(theWeight,2));
   }
-  
+
+  float jetAcceptance = 0;
+
+  if (nJetsTotal != 0){
+    if (useLooseJets) {
+      jetAcceptance = (float)pfJetVectorLoose->size() / nJetsTotal;
+    }
+    else{
+      jetAcceptance = (float)pfJetVector->size() / nJetsTotal;
+    }
+  }
+  if (isMC) h_jetAcceptance->Fill(jetAcceptance ,weightMap->at("correctedNominal"));
+  else h_jetAcceptance->Fill(jetAcceptance, theWeight); //theWeight = 1 for data
+
   bool passTrigger;
   if(isScouting){
     l1GtUtils_->retrieveL1Event(iEvent,iSetup,algToken_);
@@ -645,6 +664,8 @@ TriggerFilter::beginJob()
   h_weightsSquared_LUMCorrected->GetXaxis()->SetBinLabel(2,"Trigger");
   h_weightsSquared_LUMCorrected->GetXaxis()->SetBinLabel(3,"nJets");
 
+  h_jetAcceptance = fs->make<TH1D>("jetAcceptance", ";Jet Fraction; Sum of Weights", 100, 0, 1);
+
   TFile* vetoFile = TFile::Open("Summer24Prompt24_RunBCDEFGHI.root", "READ");
   jetVetoMap_ = (TH2F*)vetoFile->Get("jetvetomap");
 
@@ -693,6 +714,9 @@ TriggerFilter::endJob() {
 
   h_weightsSquared_LUMCorrected->Draw();
   h_weightsSquared_LUMCorrected->Write();
+
+  h_jetAcceptance->Draw();
+  h_jetAcceptance->Write();
 
   tree->GetDirectory()->cd();
   
