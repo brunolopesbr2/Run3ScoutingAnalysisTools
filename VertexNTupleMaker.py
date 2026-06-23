@@ -84,6 +84,14 @@ options.register('doJEC',
                  "If HLT jet corrections are applied"
 )
 
+options.register('doL1',
+                 True,
+                 VarParsing.VarParsing.multiplicity.singleton,
+                 VarParsing.VarParsing.varType.bool,
+                 "To unpack L1 collections and calcualte L1 HT"
+)
+
+
 options.register('useLooseJets',
                  False,
                  VarParsing.VarParsing.multiplicity.singleton,
@@ -92,10 +100,10 @@ options.register('useLooseJets',
 )
 
 options.register('validation',
-                 True,
+                 False,
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.bool,
-                 "Validation mode. Disables the event and jet veto."
+                 "Validation mode. Disables the event veto."
 )
 
 
@@ -110,7 +118,7 @@ process.options = cms.untracked.PSet(
 process.MessageLogger.cerr.FwkSummary.reportEvery = 100
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(10000) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1) )
 PUCorrectionData = np.load(options.PUFile)
 UncertaintyCorrectionData = np.load(options.UncertaintyCorrectionFile)
 
@@ -241,6 +249,11 @@ if(options.hasReco):
 else:
     recoTrackTag = cms.InputTag("hltScoutingUnpackProducer","Track")
 
+if(options.doL1):
+    L1etSumTag = cms.InputTag("hltGtStage2Digis", "EtSum")
+else:
+    L1etSumTag = cms.InputTag("")
+
 #The L1 seeds used for JetHT
 L1Info = ["L1_HTT200er", "L1_HTT255er", "L1_HTT280er", "L1_HTT320er", "L1_HTT360er", "L1_HTT400er", "L1_HTT450er", "L1_ETT2000", "L1_SingleJet180", "L1_SingleJet200", "L1_DoubleJet30er2p5_Mass_Min250_dEta_Max1p5", "L1_DoubleJet30er2p5_Mass_Min300_dEta_Max1p5", "L1_DoubleJet30er2p5_Mass_Min330_dEta_Max1p5"]
 
@@ -282,6 +295,93 @@ process.scoutingPFJetCorrected = cms.EDProducer("CorrectedPFJetProducer",
     src = cms.InputTag("scoutingToRecoJets"),
 )
 
+#L1 unpacker
+process.GlobalParametersRcdSource = cms.ESSource( "EmptyESSource",
+    recordName = cms.string( "L1TGlobalParametersRcd" ),
+    iovIsRunNotTime = cms.bool( True ),
+    firstValid = cms.vuint32( 1 )
+)
+
+process.GlobalParameters = cms.ESProducer( "StableParametersTrivialProducer",
+    TotalBxInEvent = cms.int32( 5 ),
+    NumberPhysTriggers = cms.uint32( 512 ),
+    NumberL1Muon = cms.uint32( 8 ),
+    NumberL1EGamma = cms.uint32( 12 ),
+    NumberL1Jet = cms.uint32( 12 ),
+    NumberL1Tau = cms.uint32( 12 ),
+    NumberChips = cms.uint32( 1 ),
+    PinsOnChip = cms.uint32( 512 ),
+    OrderOfChip = cms.vint32( 1 ),
+    NumberL1IsoEG = cms.uint32( 4 ),
+    NumberL1JetCounts = cms.uint32( 12 ),
+    UnitLength = cms.int32( 8 ),
+    NumberL1ForJet = cms.uint32( 4 ),
+    IfCaloEtaNumberBits = cms.uint32( 4 ),
+    IfMuEtaNumberBits = cms.uint32( 6 ),
+    NumberL1TauJet = cms.uint32( 4 ),
+    NumberL1Mu = cms.uint32( 4 ),
+    NumberConditionChips = cms.uint32( 1 ),
+    NumberPsbBoards = cms.int32( 7 ),
+    NumberL1CenJet = cms.uint32( 4 ),
+    PinsOnConditionChip = cms.uint32( 512 ),
+    NumberL1NoIsoEG = cms.uint32( 4 ),
+    NumberTechnicalTriggers = cms.uint32( 64 ),
+    NumberPhysTriggersExtended = cms.uint32( 64 ),
+    WordLength = cms.int32( 64 ),
+    OrderConditionChip = cms.vint32( 1 ),
+    appendToDataLabel = cms.string( "" )
+)
+
+process.hltGtStage2Digis = cms.EDProducer( "L1TRawToDigi",
+    FedIds = cms.vint32( 1404 ),
+    Setup = cms.string( "stage2::GTSetup" ),
+    FWId = cms.uint32( 0 ),
+    DmxFWId = cms.uint32( 0 ),
+    FWOverride = cms.bool( False ),
+    TMTCheck = cms.bool( True ),
+    CTP7 = cms.untracked.bool( False ),
+    MTF7 = cms.untracked.bool( False ),
+    InputLabel = cms.InputTag( "hltFEDSelectorL1" ),
+    lenSlinkHeader = cms.untracked.int32( 8 ),
+    lenSlinkTrailer = cms.untracked.int32( 8 ),
+    lenAMCHeader = cms.untracked.int32( 8 ),
+    lenAMCTrailer = cms.untracked.int32( 0 ),
+    lenAMC13Header = cms.untracked.int32( 8 ),
+    lenAMC13Trailer = cms.untracked.int32( 8 ),
+    debug = cms.untracked.bool( False ),
+    MinFeds = cms.uint32( 0 )
+)
+
+
+process.hltGtStage2ObjectMap = cms.EDProducer( "L1TGlobalProducer",
+    MuonInputTag = cms.InputTag( 'hltGtStage2Digis','Muon' ),
+    MuonShowerInputTag = cms.InputTag( 'hltGtStage2Digis','MuonShower' ),
+    EGammaInputTag = cms.InputTag( 'hltGtStage2Digis','EGamma' ),
+    TauInputTag = cms.InputTag( 'hltGtStage2Digis','Tau' ),
+    JetInputTag = cms.InputTag( 'hltGtStage2Digis','Jet' ),
+    EtSumInputTag = cms.InputTag( 'hltGtStage2Digis','EtSum' ),
+    EtSumZdcInputTag = cms.InputTag( 'hltGtStage2Digis','EtSumZDC' ),
+    CICADAInputTag = cms.InputTag( 'hltGtStage2Digis','CICADAScore' ),
+    ExtInputTag = cms.InputTag( "hltGtStage2Digis" ),
+    AlgoBlkInputTag = cms.InputTag( "hltGtStage2Digis" ),
+    GetPrescaleColumnFromData = cms.bool( False ),
+    AlgorithmTriggersUnprescaled = cms.bool( True ),
+    RequireMenuToMatchAlgoBlkInput = cms.bool( True ),
+    AlgorithmTriggersUnmasked = cms.bool( True ),
+    useMuonShowers = cms.bool( True ),
+    resetPSCountersEachLumiSec = cms.bool( True ),
+    semiRandomInitialPSCounters = cms.bool( False ),
+    ProduceL1GtDaqRecord = cms.bool( True ),
+    ProduceL1GtObjectMapRecord = cms.bool( True ),
+    EmulateBxInEvent = cms.int32( 1 ),
+    L1DataBxInEvent = cms.int32( 5 ),
+    AlternativeNrBxBoardDaq = cms.uint32( 0 ),
+    BstLengthBytes = cms.int32( -1 ),
+    PrescaleSet = cms.uint32( 1 ),
+    Verbosity = cms.untracked.int32( 0 ),
+    PrintL1Menu = cms.untracked.bool( False ),
+    TriggerMenuLuminosity = cms.string( "startup" )
+)
 
 process.hltScoutingUnpackProducer = cms.EDProducer('HLTScoutingUnpackProducer',
                                                    scoutingTrack = scoutingTrackTag,
@@ -375,6 +475,8 @@ process.Vertexer = cms.EDProducer('Vertexer',
 
 process.scoutingTree = cms.EDAnalyzer('ScoutingTreeMakerRun3',
                                       isMC = cms.bool(options.isMC),
+                                      doL1 = cms.bool(options.doL1),
+                                      L1et = L1etSumTag,
                                       required_ntk     = cms.int32(3), #default is 3
                                       triggerresults   = cms.InputTag("TriggerResults", "", "HLT"),
                                       ReadPrescalesFromFile = cms.bool( False ),
@@ -413,33 +515,65 @@ process.scoutingTree = cms.EDAnalyzer('ScoutingTreeMakerRun3',
                                       scoutingParticle = scoutingPFTag,
                                       weightMap = cms.InputTag("triggerFilter", "weightMap"),
                                       val = cms.bool(options.validation),
-                                      LLP_pdgId = cms.int32(5000001) #1000006 for stop, 9000006 for the exotic Higgs decay, 5000001 for StealthSUSY
+                                      LLP_pdgId = cms.int32(9000006) #1000006 for stop, 9000006 for the exotic Higgs decay, 5000001 for StealthSUSY
                                       )
 # Usually it is better to put producers on a task instead of a path
 # but paths also work.
-if(options.doJEC):
-    process.p = cms.Path(
-        process.scoutingToRecoJets *
-        process.hltAK4PFFastJetCorrector *
-        process.hltAK4PFRelativeCorrector *
-        process.hltAK4PFAbsoluteCorrector *
-        process.hltAK4PFResidualCorrector *
-        process.hltAK4PFCorrector *
-        process.scoutingPFJetCorrected *
-        process.hltScoutingUnpackProducer *
-        process.gtStage2Digis *
-        process.triggerFilter *
-        process.offlineBeamSpot *
-        process.Vertexer *
-        process.scoutingTree
-    )
+
+
+if(options.doL1):
+    if(options.doJEC):
+        process.p = cms.Path(
+            process.scoutingToRecoJets *
+            process.hltAK4PFFastJetCorrector *
+            process.hltAK4PFRelativeCorrector *
+            process.hltAK4PFAbsoluteCorrector *
+            process.hltAK4PFResidualCorrector *
+            process.hltAK4PFCorrector *
+            process.scoutingPFJetCorrected *
+            process.hltScoutingUnpackProducer *
+            process.hltGtStage2Digis *
+            process.hltGtStage2ObjectMap *
+            process.triggerFilter *
+            process.offlineBeamSpot *
+            process.Vertexer *
+            process.scoutingTree
+        )
+    else:
+        process.p = cms.Path(
+            process.scoutingToRecoJets *
+            process.hltScoutingUnpackProducer *
+            process.hltGtStage2Digis *
+            process.hltGtStage2ObjectMap *
+            process.triggerFilter *
+            process.offlineBeamSpot *
+            process.Vertexer *
+            process.scoutingTree
+        )
 else:
-    process.p = cms.Path(
-        process.scoutingToRecoJets *
-        process.hltScoutingUnpackProducer *
-        process.gtStage2Digis *
-        process.triggerFilter *
-        process.offlineBeamSpot *
-        process.Vertexer *
-        process.scoutingTree
-    )
+    if(options.doJEC):
+        process.p = cms.Path(
+            process.scoutingToRecoJets *
+            process.hltAK4PFFastJetCorrector *
+            process.hltAK4PFRelativeCorrector *
+            process.hltAK4PFAbsoluteCorrector *
+            process.hltAK4PFResidualCorrector *
+            process.hltAK4PFCorrector *
+            process.scoutingPFJetCorrected *
+            process.hltScoutingUnpackProducer *
+            process.gtStage2Digis *
+            process.triggerFilter *
+            process.offlineBeamSpot *
+            process.Vertexer *
+            process.scoutingTree
+        )
+    else:
+        process.p = cms.Path(
+            process.scoutingToRecoJets *
+            process.hltScoutingUnpackProducer *
+            process.gtStage2Digis *
+            process.triggerFilter *
+            process.offlineBeamSpot *
+            process.Vertexer *
+            process.scoutingTree
+        )
