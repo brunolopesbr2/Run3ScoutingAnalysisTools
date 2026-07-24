@@ -158,8 +158,6 @@ private:
   double crossSection;
   std::vector<double> PUCorrectionArray;
   bool isMC;
-  bool doL1;
-
 
   triggerExpression::Data triggerCache_;
 
@@ -722,7 +720,6 @@ ScoutingTreeMakerRun3::ScoutingTreeMakerRun3(const edm::ParameterSet& iConfig):
   crossSection        (iConfig.existsAs<double>("crossSection")    ?    iConfig.getParameter<double>  ("crossSection") : 1.0),
   PUCorrectionArray(iConfig.getParameter<std::vector<double>>("PUCorrectionArray")),
   isMC(iConfig.existsAs<bool>("isMC") ? iConfig.getParameter<bool>("isMC") : false),
-  doL1(iConfig.existsAs<bool>("doL1") ? iConfig.getParameter<bool>("doL1") : false),
   weightsToken_(consumes<std::map<std::string, float>>(edm::InputTag("triggerFilter", "weightMap"))),
   isValidation(iConfig.getParameter<bool>("val")),
   LLP_pdgId(iConfig.getParameter<int>("LLP_pdgId"))
@@ -897,20 +894,18 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
   double genWeight = 1;
   double theWeight = 1;
 
-  if (doL1) {
-    edm::Handle<BXVector<l1t::EtSum>> etSums;
-    iEvent.getByToken(L1etSum, etSums);
+  //Get the L1 HT
+  edm::Handle<BXVector<l1t::EtSum>> etSums;
+  iEvent.getByToken(L1etSum, etSums);
 
-    if (etSums.isValid()) {
-        for (auto it = etSums->begin(0); it != etSums->end(0); ++it) {
-            if (it->getType() == l1t::EtSum::kTotalHt) {
-                l1HT = it->et();
-                break;
-            }
-        }
+  if (etSums.isValid()) {
+      for (auto it = etSums->begin(0); it != etSums->end(0); ++it) {
+          if (it->getType() == l1t::EtSum::kTotalHt) {
+              l1HT = it->et();
+              break;
+          }
+      }
     }
-}
-else l1HT = 0;
 
   edm::Handle<std::map<std::string, float>> weightMap;
   iEvent.getByToken(weightsToken_, weightMap);
@@ -974,7 +969,7 @@ else l1HT = 0;
     h_weights->Fill("None",theWeight);
     h_weightsSquared->Fill("None",pow(theWeight,2));
   }
-  weight = weightMap->at("correctedNominal");
+  weight = theWeight;
   //Pileup info -- only for MC
 
   observedPU = -1;

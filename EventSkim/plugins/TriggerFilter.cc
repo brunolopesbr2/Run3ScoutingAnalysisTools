@@ -30,6 +30,8 @@
 #include "DataFormats/PatCandidates/interface/PackedTriggerPrescales.h"
 #include "L1Trigger/L1TGlobal/interface/L1TGlobalUtil.h"
 #include "DataFormats/L1TGlobal/interface/GlobalAlgBlk.h"
+#include "DataFormats/L1Trigger/interface/BXVector.h"
+#include "DataFormats/L1Trigger/interface/EtSum.h"
 #include "HLTrigger/HLTcore/interface/TriggerExpressionData.h"
 #include "HLTrigger/HLTcore/interface/TriggerExpressionEvaluator.h"
 #include "HLTrigger/HLTcore/interface/TriggerExpressionParser.h"
@@ -91,9 +93,11 @@ class TriggerFilter : public edm::one::EDFilter<edm::one::SharedResources, edm::
       edm::EDGetToken algToken_;
       std::unique_ptr<l1t::L1TGlobalUtil> l1GtUtils_;
       std::vector<std::string>     l1Seeds_;
+      const edm::EDGetTokenT<BXVector<l1t::EtSum>> L1etSum;
       bool isScouting;
       bool isMC;
       bool storeGenJets;
+      double L1HTThreshold;
       TH2F* jetVetoMap_;
       TH1D* h_genWeights;
       TH1D* h_weights;
@@ -181,9 +185,11 @@ TriggerFilter::TriggerFilter(const edm::ParameterSet& iConfig):
   crossSection(iConfig.existsAs<double>("crossSection") ? iConfig.getParameter<double>  ("crossSection") : 1.0),
   truePileupToken(consumes<std::vector<PileupSummaryInfo>>(iConfig.getParameter<edm::InputTag>("truePileup"))),
   PUCorrectionArray(iConfig.getParameter<std::vector<double>>("PUCorrectionArray")),
+  L1etSum(consumes<BXVector<l1t::EtSum>>(iConfig.getParameter<edm::InputTag>("L1et"))),
   isScouting(iConfig.existsAs<bool>("isScouting") ? iConfig.getParameter<bool>  ("isScouting") : false),
   isMC(iConfig.existsAs<bool>("isMC") ?  iConfig.getParameter<bool>  ("isMC") : false),
   storeGenJets(iConfig.existsAs<bool>("storeGenJets") ? iConfig.getParameter<bool>  ("storeGenJets") : false),
+  L1HTThreshold(iConfig.getParameter<double>("L1HTThreshold")), 
   scoutingParticle_collection_token_(consumes(iConfig.getParameter<edm::InputTag>("scoutingParticle"))),
   muonsToken(consumes<std::vector<Run3ScoutingMuon> > (iConfig.getParameter<edm::InputTag>("muons"))),
   triggerNominal(iConfig.getParameter<std::vector<double>>("triggerNominal")),
@@ -244,6 +250,23 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
   genJet_energy->clear();
   genJet_nConstituents->clear();
 
+  //L1 HT
+  edm::Handle<BXVector<l1t::EtSum>> etSums;
+  iEvent.getByToken(L1etSum, etSums);
+
+  float l1HT = 0;
+  if (etSums.isValid()) {
+      for (auto it = etSums->begin(0); it != etSums->end(0); ++it) {
+          if (it->getType() == l1t::EtSum::kTotalHt) {
+              l1HT = it->et();
+              break;
+          }
+      }
+  }
+  bool passHTFilter = false;
+  if (l1HT > L1HTThreshold){
+    passHTFilter = true;
+  }
   
   int nPFJets = -1;
   //Get the jets
@@ -252,53 +275,8 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
   std::unique_ptr<std::vector<reco::PFJet>> pfJetVector(new std::vector<reco::PFJet>());
   std::unique_ptr<std::vector<reco::PFJet>> pfJetVectorLoose(new std::vector<reco::PFJet>());
 
-  //Require 4 PF Jets
-  /*old recommendations
-  if(pfjetsH.isValid() && isScouting){
-    for (auto jets_iter = pfjetsH->begin(); jets_iter != pfjetsH->end(); ++jets_iter) {
-      float Jet_eta = jets_iter->eta();
-      float Jet_pt = jets_iter->pt();
-      if((Jet_pt > 30) && (abs(Jet_eta) < 2.5)){
-        int binX = jetVetoMap_->GetXaxis()->FindBin(Jet_eta);
-        int binY = jetVetoMap_->GetYaxis()->FindBin(jets_iter->phi());
-        float maskBit = jetVetoMap_->GetBinContent(binX, binY);
-
-        float energy = TMath::Sqrt(pow(TMath::CosH(Jet_eta)*jets_iter->pt(),2)+pow(jets_iter->mass(),2));
-        float Jet_chHEF = jets_iter->chargedHadronEnergy()/energy;
-        float Jet_neHEF = jets_iter->neutralHadronEnergy()/energy;
-        float Jet_muEF = jets_iter->muonEnergy()/energy;
-        float Jet_chEmEF = jets_iter->electronEnergy()/energy;
-        float Jet_neEmEF = (jets_iter->photonEnergy()+jets_iter->HFEMEnergy())/energy;
-        int Jet_chMultiplicity = jets_iter->chargedHadronMultiplicity()+jets_iter->electronMultiplicity()+jets_iter->muonMultiplicity();
-        int Jet_neMultiplicity = jets_iter->neutralHadronMultiplicity()+jets_iter->photonMultiplicity()+jets_iter->HFHadronMultiplicity()+jets_iter->HFEMMultiplicity();
-        bool Jet_passJetIdTight = false;
-
-        if (abs(Jet_eta) <= 2.6)
-          Jet_passJetIdTight = (Jet_neHEF < 0.99) && (Jet_neEmEF < 0.9) && (Jet_chMultiplicity+Jet_neMultiplicity > 1) && (Jet_chHEF > 0.01) && (Jet_chMultiplicity > 0);
-        else if (abs(Jet_eta) > 2.6 && abs(Jet_eta) <= 2.7)
-          Jet_passJetIdTight = (Jet_neHEF < 0.90) && (Jet_neEmEF < 0.99);
-        else if (abs(Jet_eta) > 2.7 && abs(Jet_eta) <= 3.0)
-          Jet_passJetIdTight = (Jet_neHEF < 0.99);
-        else if (abs(Jet_eta) > 3.0)
-          Jet_passJetIdTight = (Jet_neMultiplicity >= 2) && (Jet_neEmEF < 0.4);
-
-        bool Jet_passJetIdTightLepVeto = false;
-        if (abs(Jet_eta) <= 2.7)
-          Jet_passJetIdTightLepVeto = Jet_passJetIdTight && (Jet_muEF < 0.8) && (Jet_chEmEF < 0.8);
-        else
-          Jet_passJetIdTightLepVeto = Jet_passJetIdTight;
-        
-        if((maskBit==0) && Jet_passJetIdTightLepVeto && ((Jet_chEmEF+Jet_neEmEF)<0.9) ){
-          pfJetVector->emplace_back(*jets_iter);
-        }
-      }
-    }
-    nPFJets = pfJetVector->size();
-  }
-    */
 
   //New jet recommendations -- see https://cms-hlt-scouting.docs.cern.ch/DataAnalysis/JME/#recommendations-for-the-136-tev-scouting-data-analysis-runs-2024-c-i
-
   int nJetsTotal = 0;
 
   if(pfjetsH.isValid() && isScouting){
@@ -555,6 +533,21 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
     }
   }
 
+  passFilter = passFilter && passHTFilter;
+  if(passFilter){
+    h_genWeights->Fill("HTFilter",genWeight);
+    h_weights->Fill("HTFilter",theWeight);
+    h_weightsSquared->Fill("HTFilter",pow(theWeight,2));
+
+    if(isMC){
+      h_weights_LUMCorrected_NoTrigger->Fill("HTFilter",weightMap->at("corrected_NoTrigger"));
+      h_weightsSquared_LUMCorrected_NoTrigger->Fill("HTFilter",pow(weightMap->at("corrected_NoTrigger"),2));
+
+      h_weights_LUMCorrected->Fill("HTFilter",weightMap->at("correctedNominal"));
+      h_weightsSquared_LUMCorrected->Fill("HTFilter",pow(weightMap->at("correctedNominal"),2));
+    }
+  }
+
   //Get gen jets
   std::vector<reco::GenJet>::const_iterator genJetIter;
   edm::Handle<std::vector<reco::GenJet>> genJet_handle;
@@ -629,40 +622,47 @@ void
 TriggerFilter::beginJob()
 {
   edm::Service<TFileService> fs;
-  h_genWeights = fs->make<TH1D>("genWeightsSkim",";Cut Applied; Sum of Gen Weights",3,0,3);
+  h_genWeights = fs->make<TH1D>("genWeightsSkim",";Cut Applied; Sum of Gen Weights",4,0,4);
   h_genWeights->GetXaxis()->SetBinLabel(1,"None");
   h_genWeights->GetXaxis()->SetBinLabel(2,"Trigger");
-  h_genWeights->GetXaxis()->SetBinLabel(3,"nJets");
+  h_genWeights->GetXaxis()->SetBinLabel(3,"HTFilter");
+  h_genWeights->GetXaxis()->SetBinLabel(4,"nJets");
   
-  h_weights = fs->make<TH1D>("weightsSkim",";Cut Applied; Sum of Weights",3,0,3);
+  h_weights = fs->make<TH1D>("weightsSkim",";Cut Applied; Sum of Weights",4,0,4);
   h_weights->GetXaxis()->SetBinLabel(1,"None");
   h_weights->GetXaxis()->SetBinLabel(2,"Trigger");
-  h_weights->GetXaxis()->SetBinLabel(3,"nJets");
+  h_weights->GetXaxis()->SetBinLabel(3,"HTFilter");
+  h_weights->GetXaxis()->SetBinLabel(4,"nJets");
 
-  h_weights_LUMCorrected_NoTrigger = fs->make<TH1D>("weightsSkimLUMCorrected_NoTrigger",";Cut Applied; Sum of Weights",3,0,3);
+  h_weights_LUMCorrected_NoTrigger = fs->make<TH1D>("weightsSkimLUMCorrected_NoTrigger",";Cut Applied; Sum of Weights",4,0,4);
   h_weights_LUMCorrected_NoTrigger->GetXaxis()->SetBinLabel(1,"None");
   h_weights_LUMCorrected_NoTrigger->GetXaxis()->SetBinLabel(2,"Trigger");
-  h_weights_LUMCorrected_NoTrigger->GetXaxis()->SetBinLabel(3,"nJets");
+  h_weights_LUMCorrected_NoTrigger->GetXaxis()->SetBinLabel(3,"HTFilter");
+  h_weights_LUMCorrected_NoTrigger->GetXaxis()->SetBinLabel(4,"nJets");
 
-  h_weights_LUMCorrected = fs->make<TH1D>("weightsSkimLUMCorrected",";Cut Applied; Sum of Weights",3,0,3);
+  h_weights_LUMCorrected = fs->make<TH1D>("weightsSkimLUMCorrected",";Cut Applied; Sum of Weights",4,0,4);
   h_weights_LUMCorrected->GetXaxis()->SetBinLabel(1,"None");
   h_weights_LUMCorrected->GetXaxis()->SetBinLabel(2,"Trigger");
-  h_weights_LUMCorrected->GetXaxis()->SetBinLabel(3,"nJets");
+  h_weights_LUMCorrected->GetXaxis()->SetBinLabel(3,"HTFilter");
+  h_weights_LUMCorrected->GetXaxis()->SetBinLabel(4,"nJets");
   
-  h_weightsSquared = fs->make<TH1D>("weightsSquaredSkim",";Cut Applied; Sum of Squared Weights",3,0,3);
+  h_weightsSquared = fs->make<TH1D>("weightsSquaredSkim",";Cut Applied; Sum of Squared Weights",4,0,4);
   h_weightsSquared->GetXaxis()->SetBinLabel(1,"None");
   h_weightsSquared->GetXaxis()->SetBinLabel(2,"Trigger");
-  h_weightsSquared->GetXaxis()->SetBinLabel(3,"nJets");
+  h_weightsSquared->GetXaxis()->SetBinLabel(3,"HTFilter");
+  h_weightsSquared->GetXaxis()->SetBinLabel(4,"nJets");
 
-  h_weightsSquared_LUMCorrected_NoTrigger = fs->make<TH1D>("weightsSquaredSkimLUMCorrected_NoTrigger",";Cut Applied; Sum of Squared Weights",3,0,3);
+  h_weightsSquared_LUMCorrected_NoTrigger = fs->make<TH1D>("weightsSquaredSkimLUMCorrected_NoTrigger",";Cut Applied; Sum of Squared Weights",4,0,4);
   h_weightsSquared_LUMCorrected_NoTrigger->GetXaxis()->SetBinLabel(1,"None");
   h_weightsSquared_LUMCorrected_NoTrigger->GetXaxis()->SetBinLabel(2,"Trigger");
-  h_weightsSquared_LUMCorrected_NoTrigger->GetXaxis()->SetBinLabel(3,"nJets");
+  h_weightsSquared_LUMCorrected_NoTrigger->GetXaxis()->SetBinLabel(3,"HTFilter");
+  h_weightsSquared_LUMCorrected_NoTrigger->GetXaxis()->SetBinLabel(4,"nJets");
 
-  h_weightsSquared_LUMCorrected = fs->make<TH1D>("weightsSquaredSkimLUMCorrected",";Cut Applied; Sum of Squared Weights",3,0,3);
+  h_weightsSquared_LUMCorrected = fs->make<TH1D>("weightsSquaredSkimLUMCorrected",";Cut Applied; Sum of Squared Weights",4,0,4);
   h_weightsSquared_LUMCorrected->GetXaxis()->SetBinLabel(1,"None");
   h_weightsSquared_LUMCorrected->GetXaxis()->SetBinLabel(2,"Trigger");
-  h_weightsSquared_LUMCorrected->GetXaxis()->SetBinLabel(3,"nJets");
+  h_weightsSquared_LUMCorrected->GetXaxis()->SetBinLabel(3,"HTFilter");
+  h_weightsSquared_LUMCorrected->GetXaxis()->SetBinLabel(4,"nJets");
 
   h_jetAcceptance = fs->make<TH1D>("jetAcceptance", ";Jet Fraction; Sum of Weights", 100, 0, 1);
 
