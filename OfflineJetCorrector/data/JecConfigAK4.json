@@ -960,9 +960,9 @@
         "tagNameL2Relative": "Summer24Prompt24_V5_MC_L2Relative_AK4PFPuppi"
       },
       "JerNominal": {
-        "tagNamePtResolution": "Summer24Prompt24_JRV1_MC_PtResolution_AK4PFPuppi",
-        "tagNameJerScaleFactor": "Summer24Prompt24_JRV1_MC_ScaleFactor_AK4PFPuppi",
-        "tagNameJerSFUncertainty": "Summer24Prompt24_JRV1_MC_SFUncertainty_AK4PFPuppi"
+        "tagNamePtResolution": "Summer24Prompt24_JRV2_MC_PtResolution_AK4PFPuppi",
+        "tagNameJerScaleFactor": "Summer24Prompt24_JRV2_MC_ScaleFactor_AK4PFPuppi",
+        "tagNameJerSFUncertainty": "Summer24Prompt24_JRV2_MC_SFUncertainty_AK4PFPuppi"
       },
       "JesUncertaintySet": {
         "JesUncertaintySetFull": {
