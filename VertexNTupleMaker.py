@@ -84,14 +84,6 @@ options.register('doJEC',
                  "If HLT jet corrections are applied"
 )
 
-options.register('doL1',
-                 True,
-                 VarParsing.VarParsing.multiplicity.singleton,
-                 VarParsing.VarParsing.varType.bool,
-                 "To unpack L1 collections and calcualte L1 HT"
-)
-
-
 options.register('useLooseJets',
                  False,
                  VarParsing.VarParsing.multiplicity.singleton,
@@ -118,7 +110,7 @@ process.options = cms.untracked.PSet(
 process.MessageLogger.cerr.FwkSummary.reportEvery = 100
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(10000) )
 PUCorrectionData = np.load(options.PUFile)
 UncertaintyCorrectionData = np.load(options.UncertaintyCorrectionFile)
 
@@ -144,6 +136,8 @@ process.source = cms.Source("PoolSource",
         #'/store/data/Run2024E/ScoutingPFRun3/HLTSCOUT/v1/000/381/053/00000/c0ba031e-c25b-426a-975b-aa058276df6c.root'
         #Run 382255 LS 79
         #'/store/data/Run2024F/ScoutingPFRun3/HLTSCOUT/v1/000/382/255/00000/ac42dc85-581c-438a-b536-3abbfe4eef90.root'
+        #Era E Run 381544 LS 1096
+        #'/store/data/Run2024E/ScoutingPFRun3/HLTSCOUT/v1/000/381/544/00000/410771c4-3829-4638-8b0a-5126be4cacc9.root'
         #New lifetime stop sample
         #'/store/user/brlopesd/StopStopbarTo2Dbar2D_M-400_ctau-0p1mm_100kEvts_v2/StopStopbarTo2Dbar2D_M-400_ctau-0p1mm_100kEvts_step4_miniAOD_v1/260106_122558/0000/MiniAOD_1.root'
         #Exotic Higgs sample
@@ -195,8 +189,8 @@ process.load("TrackingTools.TransientTrack.TransientTrackBuilder_cfi")
 #    useTransientRecord = cms.bool(True)
 #)
 
-process.load("EventFilter.L1TRawToDigi.gtStage2Digis_cfi")
-process.gtStage2Digis.InputLabel = cms.InputTag( "hltFEDSelectorL1" )
+#process.load("EventFilter.L1TRawToDigi.gtStage2Digis_cfi")
+#process.gtStage2Digis.InputLabel = cms.InputTag( "hltFEDSelectorL1" )
 
 
 
@@ -248,11 +242,6 @@ if(options.hasReco):
     recoTrackTag = cms.InputTag("displacedTracks")
 else:
     recoTrackTag = cms.InputTag("hltScoutingUnpackProducer","Track")
-
-if(options.doL1):
-    L1etSumTag = cms.InputTag("hltGtStage2Digis", "EtSum")
-else:
-    L1etSumTag = cms.InputTag("")
 
 #The L1 seeds used for JetHT
 L1Info = ["L1_HTT200er", "L1_HTT255er", "L1_HTT280er", "L1_HTT320er", "L1_HTT360er", "L1_HTT400er", "L1_HTT450er", "L1_ETT2000", "L1_SingleJet180", "L1_SingleJet200", "L1_DoubleJet30er2p5_Mass_Min250_dEta_Max1p5", "L1_DoubleJet30er2p5_Mass_Min300_dEta_Max1p5", "L1_DoubleJet30er2p5_Mass_Min330_dEta_Max1p5"]
@@ -406,13 +395,15 @@ process.hltScoutingUnpackProducer = cms.EDProducer('HLTScoutingUnpackProducer',
 process.triggerFilter = cms.EDFilter('TriggerFilter',
                                      isMC = cms.bool(options.isMC),
                                      triggerresults   = cms.InputTag("TriggerResults", "", "HLT"),
-                                     AlgInputTag       = cms.InputTag("gtStage2Digis"),
-                                     l1tExtBlkInputTag = cms.InputTag("gtStage2Digis"),
+                                     AlgInputTag       = cms.InputTag("hltGtStage2Digis"),
+                                     l1tExtBlkInputTag = cms.InputTag("hltGtStage2Digis"),
                                      isScouting = cms.bool(options.isScouting),
                                      luminosity = cms.double(options.lumi), #2024 luminosity (fb-1)
                                      crossSection = cms.double(options.crossSection), # cross section in fb
                                      truePileup        = truePileupTag,
                                      PUCorrectionArray = cms.vdouble(*PUCorrectionData.flatten().tolist()),
+                                     L1et = cms.InputTag("hltGtStage2Digis", "EtSum"),
+                                     L1HTThreshold = cms.double(400.0),
                                      l1Seeds           = cms.vstring(L1Info),
                                      pfjets            = pfjetsTag,
                                      patjets           = patjetsTag,
@@ -475,14 +466,13 @@ process.Vertexer = cms.EDProducer('Vertexer',
 
 process.scoutingTree = cms.EDAnalyzer('ScoutingTreeMakerRun3',
                                       isMC = cms.bool(options.isMC),
-                                      doL1 = cms.bool(options.doL1),
-                                      L1et = L1etSumTag,
+                                      L1et = cms.InputTag("hltGtStage2Digis", "EtSum"),
                                       required_ntk     = cms.int32(3), #default is 3
                                       triggerresults   = cms.InputTag("TriggerResults", "", "HLT"),
                                       ReadPrescalesFromFile = cms.bool( False ),
-                                      AlgInputTag       = cms.InputTag("gtStage2Digis"),
-                                      l1tAlgBlkInputTag = cms.InputTag("gtStage2Digis"),
-                                      l1tExtBlkInputTag = cms.InputTag("gtStage2Digis"),
+                                      AlgInputTag       = cms.InputTag("hltGtStage2Digis"),
+                                      l1tAlgBlkInputTag = cms.InputTag("hltGtStage2Digis"),
+                                      l1tExtBlkInputTag = cms.InputTag("hltGtStage2Digis"),
                                       doTrigger = cms.bool( True ),
                                       isScouting = cms.bool(options.isScouting),
                                       doPhiCorrection = cms.bool( False ),
@@ -521,59 +511,32 @@ process.scoutingTree = cms.EDAnalyzer('ScoutingTreeMakerRun3',
 # but paths also work.
 
 
-if(options.doL1):
-    if(options.doJEC):
-        process.p = cms.Path(
-            process.scoutingToRecoJets *
-            process.hltAK4PFFastJetCorrector *
-            process.hltAK4PFRelativeCorrector *
-            process.hltAK4PFAbsoluteCorrector *
-            process.hltAK4PFResidualCorrector *
-            process.hltAK4PFCorrector *
-            process.scoutingPFJetCorrected *
-            process.hltScoutingUnpackProducer *
-            process.hltGtStage2Digis *
-            process.hltGtStage2ObjectMap *
-            process.triggerFilter *
-            process.offlineBeamSpot *
-            process.Vertexer *
-            process.scoutingTree
-        )
-    else:
-        process.p = cms.Path(
-            process.scoutingToRecoJets *
-            process.hltScoutingUnpackProducer *
-            process.hltGtStage2Digis *
-            process.hltGtStage2ObjectMap *
-            process.triggerFilter *
-            process.offlineBeamSpot *
-            process.Vertexer *
-            process.scoutingTree
-        )
+if(options.doJEC):
+    process.p = cms.Path(
+        process.scoutingToRecoJets *
+        process.hltAK4PFFastJetCorrector *
+        process.hltAK4PFRelativeCorrector *
+        process.hltAK4PFAbsoluteCorrector *
+        process.hltAK4PFResidualCorrector *
+        process.hltAK4PFCorrector *
+        process.scoutingPFJetCorrected *
+        process.hltScoutingUnpackProducer *
+        process.hltGtStage2Digis *
+        process.hltGtStage2ObjectMap *
+        process.triggerFilter *
+        process.offlineBeamSpot *
+        process.Vertexer *
+        process.scoutingTree
+    )
 else:
-    if(options.doJEC):
-        process.p = cms.Path(
-            process.scoutingToRecoJets *
-            process.hltAK4PFFastJetCorrector *
-            process.hltAK4PFRelativeCorrector *
-            process.hltAK4PFAbsoluteCorrector *
-            process.hltAK4PFResidualCorrector *
-            process.hltAK4PFCorrector *
-            process.scoutingPFJetCorrected *
-            process.hltScoutingUnpackProducer *
-            process.gtStage2Digis *
-            process.triggerFilter *
-            process.offlineBeamSpot *
-            process.Vertexer *
-            process.scoutingTree
-        )
-    else:
-        process.p = cms.Path(
-            process.scoutingToRecoJets *
-            process.hltScoutingUnpackProducer *
-            process.gtStage2Digis *
-            process.triggerFilter *
-            process.offlineBeamSpot *
-            process.Vertexer *
-            process.scoutingTree
-        )
+    process.p = cms.Path(
+        process.scoutingToRecoJets *
+        process.hltScoutingUnpackProducer *
+        process.hltGtStage2Digis *
+        process.hltGtStage2ObjectMap *
+        process.triggerFilter *
+        process.offlineBeamSpot *
+        process.Vertexer *
+        process.scoutingTree
+    )
+
