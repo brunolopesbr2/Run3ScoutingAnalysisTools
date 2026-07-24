@@ -113,6 +113,42 @@ private:
   //void beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
   //void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;   
 
+  TH1D* h_dxyErr_weighted_sum_barrel;
+  TH1D* h_dszErr_weighted_sum_barrel;
+  TH1D* h_dszdxyCov_weighted_sum_barrel;
+  TH1D* h_dxyErr_weighted_sq_sum_barrel;
+  TH1D* h_dszErr_weighted_sq_sum_barrel;
+  TH1D* h_dszdxyCov_weighted_sq_sum_barrel;
+  TH1D* h_weight_sum_barrel;
+  TH1D* h_weight_sq_sum_barrel;
+  
+  TH1D* h_dxyErr_weighted_sum_disk;
+  TH1D* h_dszErr_weighted_sum_disk;
+  TH1D* h_dszdxyCov_weighted_sum_disk;
+  TH1D* h_dxyErr_weighted_sq_sum_disk;
+  TH1D* h_dszErr_weighted_sq_sum_disk;
+  TH1D* h_dszdxyCov_weighted_sq_sum_disk;
+  TH1D* h_weight_sum_disk;
+  TH1D* h_weight_sq_sum_disk;
+
+  TH1D* h_dxyErr_weighted_sum_barrel_jetMatched;
+  TH1D* h_dszErr_weighted_sum_barrel_jetMatched;
+  TH1D* h_dszdxyCov_weighted_sum_barrel_jetMatched;
+  TH1D* h_dxyErr_weighted_sq_sum_barrel_jetMatched;
+  TH1D* h_dszErr_weighted_sq_sum_barrel_jetMatched;
+  TH1D* h_dszdxyCov_weighted_sq_sum_barrel_jetMatched;
+  TH1D* h_weight_sum_barrel_jetMatched;
+  TH1D* h_weight_sq_sum_barrel_jetMatched;
+  
+  TH1D* h_dxyErr_weighted_sum_disk_jetMatched;
+  TH1D* h_dszErr_weighted_sum_disk_jetMatched;
+  TH1D* h_dszdxyCov_weighted_sum_disk_jetMatched;
+  TH1D* h_dxyErr_weighted_sq_sum_disk_jetMatched;
+  TH1D* h_dszErr_weighted_sq_sum_disk_jetMatched;
+  TH1D* h_dszdxyCov_weighted_sq_sum_disk_jetMatched;
+  TH1D* h_weight_sum_disk_jetMatched;
+  TH1D* h_weight_sq_sum_disk_jetMatched;
+  
   const int required_ntk;
   
   const edm::InputTag triggerResultsTag;
@@ -190,7 +226,11 @@ private:
   bool isValidation;
   
   int LLP_pdgId;
-
+  const double pt_min_cut;
+  const int npixelHits_min_cut;
+  const int nstripHits_min_cut;
+  const int ntrackerLayers_min_cut;
+  
   std::vector<double> triggerNominal;
   std::vector<double> triggerUp;
   std::vector<double> triggerDown;
@@ -725,7 +765,11 @@ ScoutingTreeMakerRun3::ScoutingTreeMakerRun3(const edm::ParameterSet& iConfig):
   doL1(iConfig.existsAs<bool>("doL1") ? iConfig.getParameter<bool>("doL1") : false),
   weightsToken_(consumes<std::map<std::string, float>>(edm::InputTag("triggerFilter", "weightMap"))),
   isValidation(iConfig.getParameter<bool>("val")),
-  LLP_pdgId(iConfig.getParameter<int>("LLP_pdgId"))
+  LLP_pdgId(iConfig.getParameter<int>("LLP_pdgId")),
+  pt_min_cut(iConfig.getParameter<double>("pt_min_cut")),
+  npixelHits_min_cut(iConfig.getParameter<int>("npixelHits_min_cut")),
+  nstripHits_min_cut(iConfig.getParameter<int>("nstripHits_min_cut")),
+  ntrackerLayers_min_cut(iConfig.getParameter<int>("ntrackerLayers_min_cut"))
 {
     usesResource("TFileService");
     if (doTrigger) {
@@ -1245,7 +1289,76 @@ else l1HT = 0;
     }
   }
 
+  double histWeight = weightMap->at("correctedNominal");
   uint i_tk = 0;
+  uint nHistTracks = 0;
+  for(scoutingTrackIter = ScoutingTrackHandle->begin(); scoutingTrackIter != ScoutingTrackHandle->end(); ++scoutingTrackIter){
+    edm::Ref<std::vector<reco::Track>> trackRef(ScoutingTrackHandle, i_tk);
+    auto scoutTrack = (*ScoutingTrackRefHandle)[trackRef];
+    if ((scoutingTrackIter->pt()>pt_min_cut) && (scoutingTrackIter->hitPattern().numberOfValidPixelHits() > npixelHits_min_cut) && (scoutingTrackIter->hitPattern().numberOfValidStripHits() > nstripHits_min_cut) && (scoutingTrackIter->hitPattern().trackerLayersWithMeasurement() > ntrackerLayers_min_cut) && (fabs(scoutingTrackIter->eta())<2.4)){
+      //std::cout<<"tree track pt: "<<scoutingTrackIter->pt()<<" pixel: "<<scoutTrack->tk_nValidPixelHits()<<" strips: "<<scoutTrack->tk_nValidStripHits()<<" ntrackerlayers: "<<scoutTrack->tk_nTrackerLayersWithMeasurement()<<std::endl;
+      nHistTracks++;
+      if(fabs(trackRef->eta())<1.5){
+	h_dxyErr_weighted_sum_barrel->Fill(trackRef->pt(),histWeight*trackRef->dxyError());
+	h_dszErr_weighted_sum_barrel->Fill(trackRef->pt(),histWeight*trackRef->dszError());
+	h_dszdxyCov_weighted_sum_barrel->Fill(trackRef->pt(),histWeight*fabs(trackRef->covariance(3,4)));
+	h_dxyErr_weighted_sq_sum_barrel->Fill(trackRef->pt(),histWeight*pow(trackRef->dxyError(),2));
+	h_dszErr_weighted_sq_sum_barrel->Fill(trackRef->pt(),histWeight*pow(trackRef->dszError(),2));
+	h_dszdxyCov_weighted_sq_sum_barrel->Fill(trackRef->pt(),histWeight*pow(trackRef->covariance(3,4),2));
+	h_weight_sum_barrel->Fill(trackRef->pt(),histWeight);
+	h_weight_sq_sum_barrel->Fill(trackRef->pt(),pow(histWeight,2));
+      }
+      else{
+	h_dxyErr_weighted_sum_disk->Fill(trackRef->pt(),histWeight*trackRef->dxyError());
+	h_dszErr_weighted_sum_disk->Fill(trackRef->pt(),histWeight*trackRef->dszError());
+	h_dszdxyCov_weighted_sum_disk->Fill(trackRef->pt(),histWeight*fabs(trackRef->covariance(3,4)));
+	h_dxyErr_weighted_sq_sum_disk->Fill(trackRef->pt(),histWeight*pow(trackRef->dxyError(),2));
+	h_dszErr_weighted_sq_sum_disk->Fill(trackRef->pt(),histWeight*pow(trackRef->dszError(),2));
+	h_dszdxyCov_weighted_sq_sum_disk->Fill(trackRef->pt(),histWeight*pow(trackRef->covariance(3,4),2));
+	h_weight_sum_disk->Fill(trackRef->pt(),histWeight);
+	h_weight_sq_sum_disk->Fill(trackRef->pt(),pow(histWeight,2));
+      }
+      int i_jet = 0;
+      int i_bestMatch = -1;
+      float bestDeltaR = 9999999;
+      for (auto jet: pfJetVector) {
+	float deltaR = reco::deltaR(scoutingTrackIter->eta(),scoutingTrackIter->phi(),jet.eta(),jet.phi());
+	if((deltaR<bestDeltaR) && (deltaR<0.4)){
+	  i_bestMatch = i_jet;
+	  bestDeltaR = deltaR;
+	}
+	i_jet++;
+      } // end jet track matching
+
+      if(i_bestMatch!=-1){
+	if(fabs(trackRef->eta())<1.5){
+	  h_dxyErr_weighted_sum_barrel_jetMatched->Fill(trackRef->pt(),histWeight*trackRef->dxyError());
+	  h_dszErr_weighted_sum_barrel_jetMatched->Fill(trackRef->pt(),histWeight*trackRef->dszError());
+	  h_dszdxyCov_weighted_sum_barrel_jetMatched->Fill(trackRef->pt(),histWeight*fabs(trackRef->covariance(3,4)));
+	  h_dxyErr_weighted_sq_sum_barrel_jetMatched->Fill(trackRef->pt(),histWeight*pow(trackRef->dxyError(),2));
+	  h_dszErr_weighted_sq_sum_barrel_jetMatched->Fill(trackRef->pt(),histWeight*pow(trackRef->dszError(),2));
+	  h_dszdxyCov_weighted_sq_sum_barrel_jetMatched->Fill(trackRef->pt(),histWeight*pow(trackRef->covariance(3,4),2));
+	  h_weight_sum_barrel_jetMatched->Fill(trackRef->pt(),histWeight);
+	  h_weight_sq_sum_barrel_jetMatched->Fill(trackRef->pt(),pow(histWeight,2));
+	}
+	else{
+	  h_dxyErr_weighted_sum_disk_jetMatched->Fill(trackRef->pt(),histWeight*trackRef->dxyError());
+	  h_dszErr_weighted_sum_disk_jetMatched->Fill(trackRef->pt(),histWeight*trackRef->dszError());
+	  h_dszdxyCov_weighted_sum_disk_jetMatched->Fill(trackRef->pt(),histWeight*fabs(trackRef->covariance(3,4)));
+	  h_dxyErr_weighted_sq_sum_disk_jetMatched->Fill(trackRef->pt(),histWeight*pow(trackRef->dxyError(),2));
+	  h_dszErr_weighted_sq_sum_disk_jetMatched->Fill(trackRef->pt(),histWeight*pow(trackRef->dszError(),2));
+	  h_dszdxyCov_weighted_sq_sum_disk_jetMatched->Fill(trackRef->pt(),histWeight*pow(trackRef->covariance(3,4),2));
+	  h_weight_sum_disk_jetMatched->Fill(trackRef->pt(),histWeight);
+	  h_weight_sq_sum_disk_jetMatched->Fill(trackRef->pt(),pow(histWeight,2));
+	}
+      }
+      
+    }
+    i_tk++;
+  }
+  //std::cout<<"tree maker nHistTracks: "<<nHistTracks<<std::endl;
+  //std::cout<<"tree maker nTracks: "<<i_tk<<std::endl;
+  i_tk = 0;
   if(fillScoutTrack){
     for(scoutingTrackIter = ScoutingTrackHandle->begin(); scoutingTrackIter != ScoutingTrackHandle->end(); ++scoutingTrackIter){
       scoutTrack_pt->push_back(scoutingTrackIter->pt());
@@ -2021,7 +2134,40 @@ else l1HT = 0;
 void ScoutingTreeMakerRun3::beginJob() {
     edm::Service<TFileService> fs;
     tree = fs->make<TTree>("tree"      , "tree");
-
+    
+    h_dxyErr_weighted_sum_barrel = fs->make<TH1D>("dxyErr_weighted_sum_barrel",";Track p_{T}; Weighted Sum",200,0,200);
+    h_dszErr_weighted_sum_barrel = fs->make<TH1D>("dszErr_weighted_sum_barrel",";Track p_{T}; Weighted Sum",200,0,200);
+    h_dszdxyCov_weighted_sum_barrel = fs->make<TH1D>("dszdxyCov_weighted_sum_barrel",";Track p_{T}; Weighted Sum",200,0,200);
+    h_dxyErr_weighted_sq_sum_barrel = fs->make<TH1D>("dxyErr_weighted_sq_sum_barrel",";Track p_{T}; Weighted Sum",200,0,200);
+    h_dszErr_weighted_sq_sum_barrel = fs->make<TH1D>("dszErr_weighted_sq_sum_barrel",";Track p_{T}; Weighted Sum",200,0,200);
+    h_dszdxyCov_weighted_sq_sum_barrel = fs->make<TH1D>("dszdxyCov_weighted_sq_sum_barrel",";Track p_{T}; Weighted Sum",200,0,200);
+    h_weight_sum_barrel = fs->make<TH1D>("weight_sum_barrel",";Track p_{T}; Weight Sum",200,0,200);
+    h_weight_sq_sum_barrel = fs->make<TH1D>("weight_sq_sum_barrel",";Track p_{T}; Weight Squared Sum",200,0,200);
+    h_dxyErr_weighted_sum_disk = fs->make<TH1D>("dxyErr_weighted_sum_disk",";Track p_{T}; Weighted Sum",200,0,200);
+    h_dszErr_weighted_sum_disk = fs->make<TH1D>("dszErr_weighted_sum_disk",";Track p_{T}; Weighted Sum",200,0,200);
+    h_dszdxyCov_weighted_sum_disk = fs->make<TH1D>("dszdxyCov_weighted_sum_disk",";Track p_{T}; Weighted Sum",200,0,200);
+    h_dxyErr_weighted_sq_sum_disk = fs->make<TH1D>("dxyErr_weighted_sq_sum_disk",";Track p_{T}; Weighted Sum",200,0,200);
+    h_dszErr_weighted_sq_sum_disk = fs->make<TH1D>("dszErr_weighted_sq_sum_disk",";Track p_{T}; Weighted Sum",200,0,200);
+    h_dszdxyCov_weighted_sq_sum_disk = fs->make<TH1D>("dszdxyCov_weighted_sq_sum_disk",";Track p_{T}; Weighted Sum",200,0,200);
+    h_weight_sum_disk = fs->make<TH1D>("weight_sum_disk",";Track p_{T}; Weight Sum",200,0,200);
+    h_weight_sq_sum_disk = fs->make<TH1D>("weight_sq_sum_disk",";Track p_{T}; Weight Squared Sum",200,0,200);
+    h_dxyErr_weighted_sum_barrel_jetMatched = fs->make<TH1D>("dxyErr_weighted_sum_barrel_jetMatched",";Track p_{T}; Weighted Sum",200,0,200);
+    h_dszErr_weighted_sum_barrel_jetMatched = fs->make<TH1D>("dszErr_weighted_sum_barrel_jetMatched",";Track p_{T}; Weighted Sum",200,0,200);
+    h_dszdxyCov_weighted_sum_barrel_jetMatched = fs->make<TH1D>("dszdxyCov_weighted_sum_barrel_jetMatched",";Track p_{T}; Weighted Sum",200,0,200);
+    h_dxyErr_weighted_sq_sum_barrel_jetMatched = fs->make<TH1D>("dxyErr_weighted_sq_sum_barrel_jetMatched",";Track p_{T}; Weighted Sum",200,0,200);
+    h_dszErr_weighted_sq_sum_barrel_jetMatched = fs->make<TH1D>("dszErr_weighted_sq_sum_barrel_jetMatched",";Track p_{T}; Weighted Sum",200,0,200);
+    h_dszdxyCov_weighted_sq_sum_barrel_jetMatched = fs->make<TH1D>("dszdxyCov_weighted_sq_sum_barrel_jetMatched",";Track p_{T}; Weighted Sum",200,0,200);
+    h_weight_sum_barrel_jetMatched = fs->make<TH1D>("weight_sum_barrel_jetMatched",";Track p_{T}; Weight Sum",200,0,200);
+    h_weight_sq_sum_barrel_jetMatched = fs->make<TH1D>("weight_sq_sum_barrel_jetMatched",";Track p_{T}; Weight Squared Sum",200,0,200);
+    h_dxyErr_weighted_sum_disk_jetMatched = fs->make<TH1D>("dxyErr_weighted_sum_disk_jetMatched",";Track p_{T}; Weighted Sum",200,0,200);
+    h_dszErr_weighted_sum_disk_jetMatched = fs->make<TH1D>("dszErr_weighted_sum_disk_jetMatched",";Track p_{T}; Weighted Sum",200,0,200);
+    h_dszdxyCov_weighted_sum_disk_jetMatched = fs->make<TH1D>("dszdxyCov_weighted_sum_disk_jetMatched",";Track p_{T}; Weighted Sum",200,0,200);
+    h_dxyErr_weighted_sq_sum_disk_jetMatched = fs->make<TH1D>("dxyErr_weighted_sq_sum_disk_jetMatched",";Track p_{T}; Weighted Sum",200,0,200);
+    h_dszErr_weighted_sq_sum_disk_jetMatched = fs->make<TH1D>("dszErr_weighted_sq_sum_disk_jetMatched",";Track p_{T}; Weighted Sum",200,0,200);
+    h_dszdxyCov_weighted_sq_sum_disk_jetMatched = fs->make<TH1D>("dszdxyCov_weighted_sq_sum_disk_jetMatched",";Track p_{T}; Weighted Sum",200,0,200);
+    h_weight_sum_disk_jetMatched = fs->make<TH1D>("weight_sum_disk_jetMatched",";Track p_{T}; Weight Sum",200,0,200);
+    h_weight_sq_sum_disk_jetMatched = fs->make<TH1D>("weight_sq_sum_disk_jetMatched",";Track p_{T}; Weight Squared Sum",200,0,200);
+     
     //tree->Branch("nPFJets"             , &nPFJets                     , "nPFJets/F"     );
 
     tree->Branch("ptjet1"              , &ptjet1                      , "ptjet1/F"      );
