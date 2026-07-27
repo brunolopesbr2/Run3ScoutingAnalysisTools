@@ -189,8 +189,8 @@ process.load("TrackingTools.TransientTrack.TransientTrackBuilder_cfi")
 #    useTransientRecord = cms.bool(True)
 #)
 
-#process.load("EventFilter.L1TRawToDigi.gtStage2Digis_cfi")
-#process.gtStage2Digis.InputLabel = cms.InputTag( "hltFEDSelectorL1" )
+process.load("EventFilter.L1TRawToDigi.gtStage2Digis_cfi")
+process.gtStage2Digis.InputLabel = cms.InputTag( "hltFEDSelectorL1" )
 
 
 
@@ -284,94 +284,6 @@ process.scoutingPFJetCorrected = cms.EDProducer("CorrectedPFJetProducer",
     src = cms.InputTag("scoutingToRecoJets"),
 )
 
-#L1 unpacker
-process.GlobalParametersRcdSource = cms.ESSource( "EmptyESSource",
-    recordName = cms.string( "L1TGlobalParametersRcd" ),
-    iovIsRunNotTime = cms.bool( True ),
-    firstValid = cms.vuint32( 1 )
-)
-
-process.GlobalParameters = cms.ESProducer( "StableParametersTrivialProducer",
-    TotalBxInEvent = cms.int32( 5 ),
-    NumberPhysTriggers = cms.uint32( 512 ),
-    NumberL1Muon = cms.uint32( 8 ),
-    NumberL1EGamma = cms.uint32( 12 ),
-    NumberL1Jet = cms.uint32( 12 ),
-    NumberL1Tau = cms.uint32( 12 ),
-    NumberChips = cms.uint32( 1 ),
-    PinsOnChip = cms.uint32( 512 ),
-    OrderOfChip = cms.vint32( 1 ),
-    NumberL1IsoEG = cms.uint32( 4 ),
-    NumberL1JetCounts = cms.uint32( 12 ),
-    UnitLength = cms.int32( 8 ),
-    NumberL1ForJet = cms.uint32( 4 ),
-    IfCaloEtaNumberBits = cms.uint32( 4 ),
-    IfMuEtaNumberBits = cms.uint32( 6 ),
-    NumberL1TauJet = cms.uint32( 4 ),
-    NumberL1Mu = cms.uint32( 4 ),
-    NumberConditionChips = cms.uint32( 1 ),
-    NumberPsbBoards = cms.int32( 7 ),
-    NumberL1CenJet = cms.uint32( 4 ),
-    PinsOnConditionChip = cms.uint32( 512 ),
-    NumberL1NoIsoEG = cms.uint32( 4 ),
-    NumberTechnicalTriggers = cms.uint32( 64 ),
-    NumberPhysTriggersExtended = cms.uint32( 64 ),
-    WordLength = cms.int32( 64 ),
-    OrderConditionChip = cms.vint32( 1 ),
-    appendToDataLabel = cms.string( "" )
-)
-
-process.hltGtStage2Digis = cms.EDProducer( "L1TRawToDigi",
-    FedIds = cms.vint32( 1404 ),
-    Setup = cms.string( "stage2::GTSetup" ),
-    FWId = cms.uint32( 0 ),
-    DmxFWId = cms.uint32( 0 ),
-    FWOverride = cms.bool( False ),
-    TMTCheck = cms.bool( True ),
-    CTP7 = cms.untracked.bool( False ),
-    MTF7 = cms.untracked.bool( False ),
-    InputLabel = cms.InputTag( "hltFEDSelectorL1" ),
-    lenSlinkHeader = cms.untracked.int32( 8 ),
-    lenSlinkTrailer = cms.untracked.int32( 8 ),
-    lenAMCHeader = cms.untracked.int32( 8 ),
-    lenAMCTrailer = cms.untracked.int32( 0 ),
-    lenAMC13Header = cms.untracked.int32( 8 ),
-    lenAMC13Trailer = cms.untracked.int32( 8 ),
-    debug = cms.untracked.bool( False ),
-    MinFeds = cms.uint32( 0 )
-)
-
-
-process.hltGtStage2ObjectMap = cms.EDProducer( "L1TGlobalProducer",
-    MuonInputTag = cms.InputTag( 'hltGtStage2Digis','Muon' ),
-    MuonShowerInputTag = cms.InputTag( 'hltGtStage2Digis','MuonShower' ),
-    EGammaInputTag = cms.InputTag( 'hltGtStage2Digis','EGamma' ),
-    TauInputTag = cms.InputTag( 'hltGtStage2Digis','Tau' ),
-    JetInputTag = cms.InputTag( 'hltGtStage2Digis','Jet' ),
-    EtSumInputTag = cms.InputTag( 'hltGtStage2Digis','EtSum' ),
-    EtSumZdcInputTag = cms.InputTag( 'hltGtStage2Digis','EtSumZDC' ),
-    CICADAInputTag = cms.InputTag( 'hltGtStage2Digis','CICADAScore' ),
-    ExtInputTag = cms.InputTag( "hltGtStage2Digis" ),
-    AlgoBlkInputTag = cms.InputTag( "hltGtStage2Digis" ),
-    GetPrescaleColumnFromData = cms.bool( False ),
-    AlgorithmTriggersUnprescaled = cms.bool( True ),
-    RequireMenuToMatchAlgoBlkInput = cms.bool( True ),
-    AlgorithmTriggersUnmasked = cms.bool( True ),
-    useMuonShowers = cms.bool( True ),
-    resetPSCountersEachLumiSec = cms.bool( True ),
-    semiRandomInitialPSCounters = cms.bool( False ),
-    ProduceL1GtDaqRecord = cms.bool( True ),
-    ProduceL1GtObjectMapRecord = cms.bool( True ),
-    EmulateBxInEvent = cms.int32( 1 ),
-    L1DataBxInEvent = cms.int32( 5 ),
-    AlternativeNrBxBoardDaq = cms.uint32( 0 ),
-    BstLengthBytes = cms.int32( -1 ),
-    PrescaleSet = cms.uint32( 1 ),
-    Verbosity = cms.untracked.int32( 0 ),
-    PrintL1Menu = cms.untracked.bool( False ),
-    TriggerMenuLuminosity = cms.string( "startup" )
-)
-
 process.hltScoutingUnpackProducer = cms.EDProducer('HLTScoutingUnpackProducer',
                                                    scoutingTrack = scoutingTrackTag,
                                                    scoutingPrimaryVertex = scoutingPVTag,
@@ -395,14 +307,14 @@ process.hltScoutingUnpackProducer = cms.EDProducer('HLTScoutingUnpackProducer',
 process.triggerFilter = cms.EDFilter('TriggerFilter',
                                      isMC = cms.bool(options.isMC),
                                      triggerresults   = cms.InputTag("TriggerResults", "", "HLT"),
-                                     AlgInputTag       = cms.InputTag("hltGtStage2Digis"),
-                                     l1tExtBlkInputTag = cms.InputTag("hltGtStage2Digis"),
+                                     AlgInputTag       = cms.InputTag("gtStage2Digis"),
+                                     l1tExtBlkInputTag = cms.InputTag("gtStage2Digis"),
                                      isScouting = cms.bool(options.isScouting),
                                      luminosity = cms.double(options.lumi), #2024 luminosity (fb-1)
                                      crossSection = cms.double(options.crossSection), # cross section in fb
                                      truePileup        = truePileupTag,
                                      PUCorrectionArray = cms.vdouble(*PUCorrectionData.flatten().tolist()),
-                                     L1et = cms.InputTag("hltGtStage2Digis", "EtSum"),
+                                     L1et = cms.InputTag("gtStage2Digis", "EtSum"),
                                      L1HTThreshold = cms.double(400.0),
                                      l1Seeds           = cms.vstring(L1Info),
                                      pfjets            = pfjetsTag,
@@ -466,13 +378,13 @@ process.Vertexer = cms.EDProducer('Vertexer',
 
 process.scoutingTree = cms.EDAnalyzer('ScoutingTreeMakerRun3',
                                       isMC = cms.bool(options.isMC),
-                                      L1et = cms.InputTag("hltGtStage2Digis", "EtSum"),
+                                      L1et = cms.InputTag("gtStage2Digis", "EtSum"),
                                       required_ntk     = cms.int32(3), #default is 3
                                       triggerresults   = cms.InputTag("TriggerResults", "", "HLT"),
                                       ReadPrescalesFromFile = cms.bool( False ),
-                                      AlgInputTag       = cms.InputTag("hltGtStage2Digis"),
-                                      l1tAlgBlkInputTag = cms.InputTag("hltGtStage2Digis"),
-                                      l1tExtBlkInputTag = cms.InputTag("hltGtStage2Digis"),
+                                      AlgInputTag       = cms.InputTag("gtStage2Digis"),
+                                      l1tAlgBlkInputTag = cms.InputTag("gtStage2Digis"),
+                                      l1tExtBlkInputTag = cms.InputTag("gtStage2Digis"),
                                       doTrigger = cms.bool( True ),
                                       isScouting = cms.bool(options.isScouting),
                                       doPhiCorrection = cms.bool( False ),
@@ -521,8 +433,7 @@ if(options.doJEC):
         process.hltAK4PFCorrector *
         process.scoutingPFJetCorrected *
         process.hltScoutingUnpackProducer *
-        process.hltGtStage2Digis *
-        process.hltGtStage2ObjectMap *
+        process.gtStage2Digis *
         process.triggerFilter *
         process.offlineBeamSpot *
         process.Vertexer *
@@ -532,8 +443,7 @@ else:
     process.p = cms.Path(
         process.scoutingToRecoJets *
         process.hltScoutingUnpackProducer *
-        process.hltGtStage2Digis *
-        process.hltGtStage2ObjectMap *
+        process.gtStage2Digis *
         process.triggerFilter *
         process.offlineBeamSpot *
         process.Vertexer *
