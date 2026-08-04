@@ -112,7 +112,6 @@ private:
   const edm::EDGetTokenT<std::vector<reco::Track>> originalTracksToken_;
   const edm::EDGetTokenT<std::vector<reco::Track>> tracksToken_;
   const edm::EDGetTokenT<std::vector<reco::Track>> movedTracksToken_;
-  const edm::EDGetTokenT<std::vector<reco::Track>> unmovedTracksToken_;
   const edm::EDGetTokenT<std::vector<double>> moveVertexToken_;
   const edm::EDGetTokenT<std::vector<reco::Vertex>> verticesToken_;
   const edm::EDGetTokenT<int> nPreselJetsToken_;
@@ -146,12 +145,6 @@ private:
   std::vector<double> movedTracks_dxy;
   std::vector<double> movedTracks_dz;
 
-  std::vector<double> unmovedTracks_pt;
-  std::vector<double> unmovedTracks_eta;
-  std::vector<double> unmovedTracks_phi;
-  std::vector<double> unmovedTracks_dxy;
-  std::vector<double> unmovedTracks_dz;
-
   //vertex level
   double primaryVertex_x;
   double primaryVertex_y;
@@ -174,7 +167,6 @@ private:
   int nVertices;
   int nMovedTracks;
   int nPreselJets;
-  int nMovedJets;
   int nPV;
   bool matchedVertex;
 
@@ -233,7 +225,6 @@ VertexEffAnalyzer::VertexEffAnalyzer(const edm::ParameterSet& iConfig)
     originalTracksToken_(consumes<std::vector<reco::Track>>(iConfig.getParameter<edm::InputTag>("original_tracks"))),
     tracksToken_(consumes<std::vector<reco::Track>>(iConfig.getParameter<edm::InputTag>("tracks"))),
     movedTracksToken_(consumes<std::vector<reco::Track>>(iConfig.getParameter<edm::InputTag>("moved_tracks"))),
-    unmovedTracksToken_(consumes<std::vector<reco::Track>>(iConfig.getParameter<edm::InputTag>("unmoved_tracks"))),
     moveVertexToken_(consumes<std::vector<double>>(iConfig.getParameter<edm::InputTag>("move_vertex"))),
     verticesToken_(consumes<std::vector<reco::Vertex>>(iConfig.getParameter<edm::InputTag>("vertices"))),
     nPreselJetsToken_(consumes<int>(iConfig.getParameter<edm::InputTag>("n_presel_jets"))),
@@ -283,11 +274,27 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   movedTracks_dxy.clear();
   movedTracks_dz.clear();
 
-  unmovedTracks_pt.clear();
-  unmovedTracks_eta.clear();
-  unmovedTracks_phi.clear();
-  unmovedTracks_dxy.clear();
-  unmovedTracks_dz.clear();
+  edm::Handle<int> nPreselJetsH;
+  iEvent.getByToken(nPreselJetsToken_, nPreselJetsH);
+
+  nPreselJets = 0;
+  if(nPreselJetsH.isValid()){
+    nPreselJets = *nPreselJetsH;
+  }
+
+  edm::Handle<reco::VertexCollection> primaryVerticesH;
+  iEvent.getByToken(primary_vertices_token, primaryVerticesH);
+
+  nPV = 0;
+  if (primaryVerticesH.isValid()) {
+    nPV = primaryVerticesH->size();
+  }
+
+  if(nPreselJets < 2 || nPV < 1) return;
+
+  primaryVertex_x = primaryVerticesH->at(0).x();
+  primaryVertex_y = primaryVerticesH->at(0).y();
+  primaryVertex_z = primaryVerticesH->at(0).z();
 
   //get online beamspot
   const auto& bs = iSetup.getData(bsOnlineToken_);
@@ -324,17 +331,6 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     weight = 1;
     weight_noTrigger = 1;
     genWeight = 1;
-  }
-
-  edm::Handle<reco::VertexCollection> primaryVerticesH;
-  iEvent.getByToken(primary_vertices_token, primaryVerticesH);
-
-  nPV = primaryVerticesH->size();
-
-  if (primaryVerticesH.isValid() && nPV > 0){
-    primaryVertex_x = primaryVerticesH->at(0).x();
-    primaryVertex_y = primaryVerticesH->at(0).y();
-    primaryVertex_z = primaryVerticesH->at(0).z();
   }
 
   edm::Handle<std::vector<reco::Vertex>> verticesH;
@@ -436,8 +432,6 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   edm::Handle<std::vector<reco::Track>> movedTracksH;
   iEvent.getByToken(movedTracksToken_, movedTracksH);
 
-  edm::Handle<std::vector<reco::Track>> unmovedTracksH;
-  iEvent.getByToken(unmovedTracksToken_, unmovedTracksH);
 
   if(originalTracksH.isValid()){
     for (auto originalTracks_iter = originalTracksH->begin(); originalTracks_iter != originalTracksH->end(); ++originalTracks_iter) {
@@ -471,17 +465,6 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     }
   }
 
-  if(unmovedTracksH.isValid()){
-    for (auto unmovedTracks_iter = unmovedTracksH->begin(); unmovedTracks_iter != unmovedTracksH->end(); ++unmovedTracks_iter) {
-      unmovedTracks_pt.push_back(unmovedTracks_iter->pt());
-      unmovedTracks_eta.push_back(unmovedTracks_iter->eta());
-      unmovedTracks_phi.push_back(unmovedTracks_iter->phi());
-      unmovedTracks_dxy.push_back(unmovedTracks_iter->dxy());
-      unmovedTracks_dz.push_back(unmovedTracks_iter->dz());
-    }
-  }
-
-
   objectTree->Fill();
 }
 
@@ -513,13 +496,9 @@ void VertexEffAnalyzer::beginJob() {
   objectTree->Branch("movedTracks_dxy",&movedTracks_dxy);
   objectTree->Branch("movedTracks_dz",&movedTracks_dz);
 
-  objectTree->Branch("unmovedTracks_pt",&unmovedTracks_pt);
-  objectTree->Branch("unmovedTracks_eta",&unmovedTracks_eta);
-  objectTree->Branch("unmovedTracks_phi",&unmovedTracks_phi);
-  objectTree->Branch("unmovedTracks_dxy",&unmovedTracks_dxy);
-  objectTree->Branch("unmovedTracks_dz",&unmovedTracks_dz);
-
   objectTree->Branch("nMovedTracks", &nMovedTracks, "nMovedTracks/I");
+
+  objectTree->Branch("nPreselJets", &nPreselJets, "nPreselJets/I");
 
   objectTree->Branch("moveVertex_x", &moveVertex_x, "moveVertex_x/D");
   objectTree->Branch("moveVertex_y", &moveVertex_y, "moveVertex_y/D");
