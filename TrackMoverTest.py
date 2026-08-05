@@ -31,7 +31,7 @@ options.register('crossSection',
                  "Cross Section for weighting"
     )
 options.register('isMC',
-                 True,
+                 False,
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.bool,
                  "If using MC or data"
