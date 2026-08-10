@@ -110,7 +110,7 @@ process.options = cms.untracked.PSet(
 process.MessageLogger.cerr.FwkSummary.reportEvery = 100
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(10000) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 PUCorrectionData = np.load(options.PUFile)
 UncertaintyCorrectionData = np.load(options.UncertaintyCorrectionFile)
 
@@ -126,6 +126,7 @@ process.source = cms.Source("PoolSource",
         #'/store/user/brlopesd/StopStopbarTo2Dbar2D_M-200_CTau-1mm_Summer24_100k_v2/StopStopbarTo2Dbar2D_M-200_CTau-1mm_Summer24_100k_miniAOD_v2/250214_150834/0000/stop_dbar_miniAOD_1.root'
         #Data test file
         #'/store/data/Run2024D/ScoutingPFRun3/HLTSCOUT/v1/000/380/945/00000/cdf45723-07c4-4b41-9595-f368f2929369.root'
+        #'/store/data/Run2024F/ScoutingPFRun3/HLTSCOUT/v1/000/383/712/00001/b52350ae-ece7-4a25-a821-2dbf34d9c603.root'
         #PF monitor file
         #'/store/data/Run2024D/ScoutingPFMonitor/MINIAOD/PromptReco-v1/000/380/306/00000/70ec6086-72c5-4562-82a8-1f043e645d59.root'
         #Run 384323 LS 8
@@ -141,7 +142,7 @@ process.source = cms.Source("PoolSource",
         #New lifetime stop sample
         #'/store/user/brlopesd/StopStopbarTo2Dbar2D_M-400_ctau-0p1mm_100kEvts_v2/StopStopbarTo2Dbar2D_M-400_ctau-0p1mm_100kEvts_step4_miniAOD_v1/260106_122558/0000/MiniAOD_1.root'
         #Exotic Higgs sample
-        '/store/mc/RunIII2024Summer24MiniAOD/GluGluH-Hto2Sto4D_Par-ctauS-10-MH-125-MS-15_TuneCP5_13p6TeV_powheg-pythia8/MINIAODSIM/140X_mcRun3_2024_realistic_v26-v2/2550000/009d9b72-008a-4d88-bbb2-79f9a66778fd.root'
+        #'/store/mc/RunIII2024Summer24MiniAOD/GluGluH-Hto2Sto4D_Par-ctauS-10-MH-125-MS-15_TuneCP5_13p6TeV_powheg-pythia8/MINIAODSIM/140X_mcRun3_2024_realistic_v26-v2/2550000/009d9b72-008a-4d88-bbb2-79f9a66778fd.root'
         #StealthSUSY sample
         #'/store/user/brlopesd/StealthSHH_mStop-300_mSo-100_ctau-0p1mm100kEvts_v2/StealthSHH_mStop-300_mSo-100_ctau-0p1mm_step4-miniAOD_100kEvts_v4/251208_232301/0000/MiniAOD_1.root'
     )
@@ -294,7 +295,7 @@ process.hltScoutingUnpackProducer = cms.EDProducer('HLTScoutingUnpackProducer',
                                                    producePFCHSCandidate = cms.bool(False),
                                                    mightGet = cms.optional.untracked.vstring,
                                                    isMC = cms.bool(options.isMC),
-                                                   doUncCorrection = cms.bool(True),
+                                                   doUncCorrection = cms.bool(False),
                                                    dxyErrCorrBarrel = cms.vdouble(*UncertaintyCorrectionData["ratio_correction_dxyErr_barrel_jetMatched"].tolist()),
                                                    dxyErrCorrDisk   = cms.vdouble(*UncertaintyCorrectionData["ratio_correction_dxyErr_disk_jetMatched"].tolist()),
                                                    dzErrCorrBarrel  = cms.vdouble(*UncertaintyCorrectionData["ratio_correction_dzErr_barrel_jetMatched"].tolist()),
@@ -315,7 +316,7 @@ process.triggerFilter = cms.EDFilter('TriggerFilter',
                                      truePileup        = truePileupTag,
                                      PUCorrectionArray = cms.vdouble(*PUCorrectionData.flatten().tolist()),
                                      L1et = cms.InputTag("gtStage2Digis", "EtSum"),
-                                     L1HTThreshold = cms.double(400.0),
+                                     L1HTThreshold = cms.double(0.0),
                                      l1Seeds           = cms.vstring(L1Info),
                                      pfjets            = pfjetsTag,
                                      patjets           = patjetsTag,
@@ -331,7 +332,10 @@ process.triggerFilter = cms.EDFilter('TriggerFilter',
                                      useLooseJets = cms.bool(options.useLooseJets),
                                      val = cms.bool(options.validation)
                                      )
-
+pt_min_val = 1.0
+npixelHits_min_val = 2
+nstripHits_min_val = 1
+ntrackerLayers_min_val = 5
 process.Vertexer = cms.EDProducer('Vertexer',
                                   generatorName = cms.InputTag('generator'),
                                   luminosity = cms.double(options.lumi), #2024 luminosity (fb-1)
@@ -341,12 +345,12 @@ process.Vertexer = cms.EDProducer('Vertexer',
                                   isMC = cms.bool(options.isMC),
                                   seed_tracks_src = cms.InputTag('hltScoutingUnpackProducer', 'Track'),
                                   pfjets = skimPFJetsTag,
-                                  pt_min_cut = cms.double(1.0),
+                                  pt_min_cut = cms.double(pt_min_val),
                                   dxySig_min_cut = cms.double(3.0),
                                   dxySig_max_cut = cms.double(4.0), #dxySig between 2.5 and 4.0 for a control region, dxySig>4 with no max for signal region
-                                  npixelHits_min_cut = cms.int32(2),
-                                  nstripHits_min_cut = cms.int32(1),
-                                  ntrackerLayers_min_cut = cms.int32(5),
+                                  npixelHits_min_cut = cms.int32(npixelHits_min_val),
+                                  nstripHits_min_cut = cms.int32(nstripHits_min_val),
+                                  ntrackerLayers_min_cut = cms.int32(ntrackerLayers_min_val),
                                   #kvr_params = kvr_params,
                                   #do_track_refinement = cms.bool(False), # remove tracks + trim out tracks with IP significance larger than trackrefine_sigmacut and trackrefine_trimmax, respectively
                                   resolve_split_vertices_loose = cms.bool(False), # an alternative merging routine with `loose` criteria, to merge any nearby vertices within a given dist or significance
@@ -388,7 +392,7 @@ process.scoutingTree = cms.EDAnalyzer('ScoutingTreeMakerRun3',
                                       doTrigger = cms.bool( True ),
                                       isScouting = cms.bool(options.isScouting),
                                       doPhiCorrection = cms.bool( False ),
-                                      doGenMatching = cms.bool( True ),
+                                      doGenMatching = cms.bool( False ),
                                       fillScoutTrack = cms.bool( True ),
                                       luminosity = cms.double(options.lumi), #2024 luminosity (fb-1)
                                       crossSection = cms.double(options.crossSection), # cross section in fb
@@ -417,7 +421,11 @@ process.scoutingTree = cms.EDAnalyzer('ScoutingTreeMakerRun3',
                                       scoutingParticle = scoutingPFTag,
                                       weightMap = cms.InputTag("triggerFilter", "weightMap"),
                                       val = cms.bool(options.validation),
-                                      LLP_pdgId = cms.int32(9000006) #1000006 for stop, 9000006 for the exotic Higgs decay, 5000001 for StealthSUSY
+                                      LLP_pdgId = cms.int32(9000006), #1000006 for stop, 9000006 for the exotic Higgs decay, 5000001 for StealthSUSY
+                                      pt_min_cut = cms.double(pt_min_val),
+                                      npixelHits_min_cut = cms.int32(npixelHits_min_val),
+                                      nstripHits_min_cut = cms.int32(nstripHits_min_val),
+                                      ntrackerLayers_min_cut = cms.int32(ntrackerLayers_min_val)
                                       )
 # Usually it is better to put producers on a task instead of a path
 # but paths also work.
@@ -432,9 +440,9 @@ if(options.doJEC):
         process.hltAK4PFResidualCorrector *
         process.hltAK4PFCorrector *
         process.scoutingPFJetCorrected *
-        process.hltScoutingUnpackProducer *
         process.gtStage2Digis *
-        process.triggerFilter *
+        process.triggerFilter * 
+        process.hltScoutingUnpackProducer *
         process.offlineBeamSpot *
         process.Vertexer *
         process.scoutingTree

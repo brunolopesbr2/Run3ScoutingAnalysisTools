@@ -328,6 +328,7 @@ private:
   std::vector<float>* scoutVert_ctau;
   std::vector<float>* scoutVert_pt;
   std::vector<float>* scoutVert_mass;
+  std::vector<float>* scoutVert_eta;
   int scoutVert_nVertices;
   double weight;
   double uncorrectedWeight;
@@ -413,6 +414,13 @@ private:
   std::vector<int>* muon_nValidRecoMuonHits;
   std::vector<int>* muon_nRecoMuonMatchedStations;
   std::vector<float>* muon_trackIso;
+  std::vector<int>* muon_charge;
+  std::vector<float>* muon_dxybs;
+  std::vector<float>* muon_dzPV;
+  std::vector<float>* dimuon_mass;
+  std::vector<float>* dimuon_deltaR;
+  std::vector<float>* dimuon_deltaEta;
+  std::vector<float>* dimuon_deltaPhi;
   
   TH1F* h_match_gen_dxy = new TH1F("match_gen_dxy",";Gen particle d_{xy} [cm]; Gen particles / 0.01 cm", 100, 0, 1);
   TH1F* h_gen_dxy = new TH1F("gen_dxy",";Gen particle d_{xy} [cm]; Gen particles / 0.01 cm", 100, 0, 1);
@@ -797,6 +805,7 @@ void K0TreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSetup& i
   scoutVert_ctau->clear();
   scoutVert_pt->clear();
   scoutVert_mass->clear();
+  scoutVert_eta->clear();
   
   jet_pt->clear();
   jet_eta->clear();
@@ -831,6 +840,13 @@ void K0TreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSetup& i
   muon_nValidRecoMuonHits->clear();
   muon_nRecoMuonMatchedStations->clear();
   muon_trackIso->clear();
+  muon_charge->clear();
+  muon_dxybs->clear();
+  muon_dzPV->clear();
+  dimuon_mass->clear();
+  dimuon_deltaR->clear();
+  dimuon_deltaEta->clear();
+  dimuon_deltaPhi->clear();
   
   eventId = iEvent.id().event();
   runNumber = iEvent.id().run();
@@ -929,7 +945,7 @@ void K0TreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSetup& i
     }
   }
   reco::BeamSpot::Point onlinePosition(bs.x(), bs.y(), bs.z());
-  reco::BeamSpot* beamspot = new BeamSpot(onlinePosition,
+  auto beamspot = std::make_unique<reco::BeamSpot>(onlinePosition,
 					 bs.sigmaZ(),
 					 bs.dxdz(),
 					 bs.dydz(),
@@ -1071,7 +1087,7 @@ void K0TreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSetup& i
   std::vector<const Run3ScoutingMuon*> selectedMuons;
 
   bool isPFMuon;
-
+  
   for (auto muons_iter = muonsH->begin(); muons_iter != muonsH->end(); ++muons_iter) {
     muon_pt->push_back(muons_iter->pt());
     muon_eta->push_back(muons_iter->eta());
@@ -1082,9 +1098,65 @@ void K0TreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSetup& i
     muon_nValidRecoMuonHits->push_back(muons_iter->nValidRecoMuonHits());
     muon_nRecoMuonMatchedStations->push_back(muons_iter->nRecoMuonMatchedStations());
     muon_trackIso->push_back(muons_iter->trackIso());
+    muon_charge->push_back(muons_iter->charge());
+    
+    float chi2 = muons_iter->trk_chi2();
+    float ndof = muons_iter->trk_ndof();
+    reco::TrackBase::Point referencePoint(muons_iter->trk_vx(), muons_iter->trk_vy(), muons_iter->trk_vz());
+    float px = muons_iter->trk_pt() * cos(muons_iter->trk_phi());
+    float py = muons_iter->trk_pt() * sin(muons_iter->trk_phi());
+    float pz = muons_iter->trk_pt() * sinh(muons_iter->trk_eta());
+    reco::TrackBase::Vector momentum(px, py, pz);
+    int charge = muons_iter->charge();
+    std::vector<float> cov_vec(15);
+    cov_vec[0] = muons_iter->trk_qoverpError() * muons_iter->trk_qoverpError(); // cov(0, 0)
+    cov_vec[1] = muons_iter->trk_qoverp_lambda_cov(); // cov(0, 1)
+    cov_vec[3] = muons_iter->trk_qoverp_phi_cov(); // cov(0, 2)
+    cov_vec[6] = muons_iter->trk_qoverp_dxy_cov(); // cov(0, 3)
+    cov_vec[10] = muons_iter->trk_qoverp_dsz_cov(); // cov(0, 4)
+    cov_vec[2] = muons_iter->trk_lambdaError() * muons_iter->trk_lambdaError(); // cov(1, 1)
+    cov_vec[4] = muons_iter->trk_lambda_phi_cov(); // cov(1, 2)
+    cov_vec[7] = muons_iter->trk_lambda_dxy_cov(); // cov(1, 3)
+    cov_vec[11] = muons_iter->trk_lambda_dsz_cov(); // cov(1, 4)
+    cov_vec[5] = muons_iter->trk_phiError() * muons_iter->trk_phiError(); // cov(2, 2)
+    cov_vec[8] = muons_iter->trk_phi_dxy_cov(); // cov(2, 3)
+    cov_vec[12] = muons_iter->trk_phi_dsz_cov(); // cov(2, 4)
+    cov_vec[9] = muons_iter->trk_dxyError() * muons_iter->trk_dxyError(); // cov(3, 3)
+    cov_vec[13] = muons_iter->trk_dxy_dsz_cov(); // cov(3, 4)
+    cov_vec[14] = muons_iter->trk_dszError() * muons_iter->trk_dszError(); // cov(4, 4)
+    reco::TrackBase::CovarianceMatrix cov(cov_vec.begin(), cov_vec.end());
+    reco::TrackBase::TrackAlgorithm algo(reco::TrackBase::undefAlgorithm); // undefined
+    reco::TrackBase::TrackQuality quality(reco::TrackBase::confirmed); // confirmed
+    reco::Track recoTrack(chi2, ndof, referencePoint, momentum, charge, cov, algo, quality);
+    reco::TransientTrack transientTrack = tt_builder.build(recoTrack);
+    std::pair<bool, Measurement1D> ttk_transverseDist = IPTools::absoluteTransverseImpactParameter(transientTrack, fake_bs_vtx);
+    float dxybs = ttk_transverseDist.second.value();
+    float dz = abs(recoTrack.dz(beamspot->position()));
+    muon_dxybs->push_back(dxybs);
+    muon_dzPV->push_back(dz);
     selectedMuons.push_back(&(*muons_iter));    
   }
 
+  for(uint i=0; i<(selectedMuons.size()-1); i++){
+    for(uint j=i+1; j<selectedMuons.size(); j++){
+      if(selectedMuons[i]->charge()!=selectedMuons[j]->charge()){
+	TLorentzVector mu1_p4;
+	TLorentzVector mu2_p4;
+	mu1_p4.SetPtEtaPhiM(selectedMuons[i]->pt(), selectedMuons[i]->eta(), selectedMuons[i]->phi(), 0.1056583745); //muon mass in GeV
+	mu2_p4.SetPtEtaPhiM(selectedMuons[j]->pt(), selectedMuons[j]->eta(), selectedMuons[j]->phi(), 0.1056583745); //muon mass in GeV
+	TLorentzVector vtx_p4 = mu1_p4 + mu2_p4;
+	dimuon_mass->push_back(vtx_p4.M());
+	float dPhi = fabs(selectedMuons[i]->phi() - selectedMuons[j]->phi());
+	if(dPhi>TMath::Pi()) dPhi = 2*TMath::Pi() - dPhi;
+	float dEta = fabs(selectedMuons[i]->eta() - selectedMuons[j]->eta());
+	float dR = TMath::Sqrt(pow(dPhi,2)+pow(dEta,2));
+	dimuon_deltaR->push_back(dR);
+	dimuon_deltaEta->push_back(dEta);
+	dimuon_deltaPhi->push_back(dPhi);
+      }
+    }
+  }
+  
   float dEta_jet_mu;
   float dPhi_jet_mu;
   float dR_jet_mu;
@@ -1380,7 +1452,7 @@ void K0TreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSetup& i
 	float dxy = TMath::Sqrt(pow(genParticleIter->vx()-beamspot->x0(),2)+pow(genParticleIter->vy()-beamspot->y0(),2));
 	h_gen_dxy->Fill(dxy);
 	gen_dxy->push_back(dxy);
-	std::pair<double,double> correction = gen_dxy_correction(genParticleIter,beamspot);
+	std::pair<double,double> correction = gen_dxy_correction(genParticleIter,beamspot.get());
 	float dxy_corrected = correction.first;
 	gen_dxyCorrected->push_back(dxy_corrected);
       }
@@ -1437,7 +1509,7 @@ void K0TreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSetup& i
 	if(!isChargedStopDecayProductStatusOne(genParticleIter).first) continue;
 	float dPhi = 0;
 	if(doPhiCorrection){
-	  std::pair<double,double> correction = gen_dxy_correction(genParticleIter,beamspot);
+	  std::pair<double,double> correction = gen_dxy_correction(genParticleIter,beamspot.get());
 	  dPhi = fabs(scoutingTrackIter->phi()-correction.second);
 	}
 	else{
@@ -1482,7 +1554,7 @@ void K0TreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSetup& i
       match_gen_dxy->push_back(dxy);
       float dxy_track = TMath::Sqrt(pow((ScoutingTrackHandle->begin()+match[1])->vx()-beamspot->x0(),2)+pow((ScoutingTrackHandle->begin()+match[1])->vy()-beamspot->y0(),2));
       match_diffDxy->push_back(dxy-dxy_track);
-      std::pair<double,double> correction = gen_dxy_correction((genParticle_handle->begin()+match[0]),beamspot);
+      std::pair<double,double> correction = gen_dxy_correction((genParticle_handle->begin()+match[0]),beamspot.get());
       float dxy_corrected = correction.first;
       match_gen_dxy->push_back(dxy_corrected);
       match_diffDxyCorrected->push_back(dxy_corrected-dxy_track);
@@ -1608,6 +1680,7 @@ void K0TreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSetup& i
     scoutVert_ctau->push_back(ctau);
     scoutVert_pt->push_back(vtxPt);
     scoutVert_mass->push_back(vtxMass);
+    scoutVert_eta->push_back(vtx_p4.Eta());
     
     if(isMC && doGenMatching){
       int i_trk = -1;
@@ -1620,7 +1693,7 @@ void K0TreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSetup& i
 	  if(!isDecayProduct.first) continue;
 	  float dPhi = 0;
 	  if(doPhiCorrection){
-	    std::pair<double,double> correction = gen_dxy_correction(genParticleIter,beamspot);
+	    std::pair<double,double> correction = gen_dxy_correction(genParticleIter,beamspot.get());
 	    dPhi = fabs(trk->phi()-correction.second);
 	  }
 	  else{
@@ -1966,6 +2039,7 @@ void K0TreeMakerRun3::beginJob() {
     scoutVert_ctau = new std::vector<float>;
     scoutVert_pt = new std::vector<float>;
     scoutVert_mass = new std::vector<float>;
+    scoutVert_eta = new std::vector<float>;
     
     jet_pt = new std::vector<float>;
     jet_eta = new std::vector<float>;
@@ -2000,6 +2074,13 @@ void K0TreeMakerRun3::beginJob() {
     muon_nValidRecoMuonHits = new std::vector<int>;
     muon_nRecoMuonMatchedStations = new std::vector<int>;
     muon_trackIso = new std::vector<float>;
+    muon_charge = new std::vector<int>;
+    muon_dxybs = new std::vector<float>;
+    muon_dzPV = new std::vector<float>;
+    dimuon_mass = new std::vector<float>;
+    dimuon_deltaR = new std::vector<float>;
+    dimuon_deltaEta = new std::vector<float>;
+    dimuon_deltaPhi = new std::vector<float>;
     
     objectTree = fs->make<TTree>("objectTree","objectTree");
     //std::cout<<"objectTree directory beginJob "<<objectTree->GetDirectory()->GetPath()<<std::endl;
@@ -2109,6 +2190,7 @@ void K0TreeMakerRun3::beginJob() {
     objectTree->Branch("scoutVert_ctau",&scoutVert_ctau);
     objectTree->Branch("scoutVert_pt",&scoutVert_pt);
     objectTree->Branch("scoutVert_mass",&scoutVert_mass);
+    objectTree->Branch("scoutVert_eta",&scoutVert_eta);
     objectTree->Branch("weight", &weight, "weight/D");
     objectTree->Branch("uncorrectedWeight", &uncorrectedWeight, "uncorrectedWeight/D");
     objectTree->Branch("weight_PU_BCDEFGHI_nominal", &weight_PU_BCDEFGHI_nominal, "weight_PU_BCDEFGHI_nominal/D");
@@ -2191,6 +2273,13 @@ void K0TreeMakerRun3::beginJob() {
     objectTree->Branch("muon_nValidRecoMuonHits",&muon_nValidRecoMuonHits);
     objectTree->Branch("muon_nRecoMuonMatchedStations",&muon_nRecoMuonMatchedStations);
     objectTree->Branch("muon_trackIso",&muon_trackIso);
+    objectTree->Branch("muon_charge",&muon_charge);
+    objectTree->Branch("muon_dxybs",&muon_dxybs);
+    objectTree->Branch("muon_dzPV",&muon_dzPV);
+    objectTree->Branch("dimuon_mass",&dimuon_mass);
+    objectTree->Branch("dimuon_deltaR",&dimuon_deltaR);
+    objectTree->Branch("dimuon_deltaEta",&dimuon_deltaEta);
+    objectTree->Branch("dimuon_deltaPhi",&dimuon_deltaPhi);
     
     h_genWeights->GetXaxis()->SetBinLabel(1,"None");
     h_genWeights->GetXaxis()->SetBinLabel(2,"nJets");
@@ -2443,6 +2532,7 @@ void K0TreeMakerRun3::endJob() {
   delete scoutVert_ctau;
   delete scoutVert_pt;
   delete scoutVert_mass;
+  delete scoutVert_eta;
   
   delete jet_pt;
   delete jet_eta;
@@ -2477,6 +2567,13 @@ void K0TreeMakerRun3::endJob() {
   delete muon_nValidRecoMuonHits;
   delete muon_nRecoMuonMatchedStations;
   delete muon_trackIso;
+  delete muon_charge;
+  delete muon_dxybs;
+  delete muon_dzPV;
+  delete dimuon_mass;
+  delete dimuon_deltaR;
+  delete dimuon_deltaEta;
+  delete dimuon_deltaPhi;
 }
 
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------

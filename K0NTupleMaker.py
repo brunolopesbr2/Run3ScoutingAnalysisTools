@@ -90,12 +90,17 @@ process.options = cms.untracked.PSet(
     wantSummary = cms.untracked.bool(True)
 )
 
+process.SimpleMemoryCheck = cms.Service("SimpleMemoryCheck",
+    ignoreTotal = cms.untracked.int32(1),
+    moduleMemorySummary = cms.untracked.bool(True)
+)
+
 #process.options.numberOfThreads=cms.untracked.uint32(2)
 #process.options.numberOfStreams=cms.untracked.uint32(0)
 process.MessageLogger.cerr.FwkSummary.reportEvery = 100
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(10000) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 PUCorrectionData = np.load(options.PUFile)
 UncertaintyCorrectionData = np.load(options.UncertaintyCorrectionFile)
 
@@ -110,7 +115,8 @@ process.source = cms.Source("PoolSource",
         #'/store/mc/RunIII2024Summer24MiniAOD/QCD-4Jets_Bin-HT-1000to1200_TuneCP5_13p6TeV_madgraphMLM-pythia8/MINIAODSIM/140X_mcRun3_2024_realistic_v26-v2/100000/00f7403b-49bf-4efd-9b8f-0398bd61d910.root'
         #'/store/user/brlopesd/StopStopbarTo2Dbar2D_M-200_CTau-1mm_Summer24_100k_v2/StopStopbarTo2Dbar2D_M-200_CTau-1mm_Summer24_100k_miniAOD_v2/250214_150834/0000/stop_dbar_miniAOD_1.root'
         #Data test file
-        '/store/data/Run2024D/ScoutingPFRun3/HLTSCOUT/v1/000/380/945/00000/cdf45723-07c4-4b41-9595-f368f2929369.root'
+        #'/store/data/Run2024D/ScoutingPFRun3/HLTSCOUT/v1/000/380/945/00000/cdf45723-07c4-4b41-9595-f368f2929369.root'
+        #'/store/data/Run2024F/ScoutingPFRun3/HLTSCOUT/v1/000/383/712/00001/b52350ae-ece7-4a25-a821-2dbf34d9c603.root'
         #PF monitor file
         #'/store/data/Run2024D/ScoutingPFMonitor/MINIAOD/PromptReco-v1/000/380/306/00000/70ec6086-72c5-4562-82a8-1f043e645d59.root'
         #Run 384323 LS 8
@@ -125,6 +131,8 @@ process.source = cms.Source("PoolSource",
         #'/StopStopbarTo2Dbar2D_M-400_ctau-0p1mm_100kEvts_v2/brlopesd-StopStopbarTo2Dbar2D_M-400_ctau-0p1mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER'
         #WZ for track efficiency study
         #'/store/mc/RunIII2024Summer24MiniAOD/WZ_TuneCP5_13p6TeV_pythia8/MINIAODSIM/140X_mcRun3_2024_realistic_v26-v2/120000/00335771-92ea-4a26-91a8-47e3dae85d23.root'
+        #Muon enriched QCD
+        #'/store/mc/RunIII2024Summer24MiniAOD/QCD_Bin-PT-1000_Fil-MuEnriched_TuneCP5_13p6TeV_pythia8/MINIAODSIM/140X_mcRun3_2024_realistic_v26-v2/120000/00650e5a-9ffe-454d-a331-9211ea82329f.root'
     )
 )
 
@@ -394,9 +402,9 @@ if(options.doJEC):
         process.hltAK4PFResidualCorrector *
         process.hltAK4PFCorrector *
         process.scoutingPFJetCorrected *
-        process.hltScoutingUnpackProducer *
         process.gtStage2Digis *
         process.K0Filter *
+        process.hltScoutingUnpackProducer *
         process.offlineBeamSpot * 
         process.K0Vertexer *
         process.K0Tree

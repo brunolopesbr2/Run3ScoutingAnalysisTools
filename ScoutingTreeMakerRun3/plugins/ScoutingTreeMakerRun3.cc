@@ -1041,7 +1041,7 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
     }
   }
   reco::BeamSpot::Point onlinePosition(bs.x(), bs.y(), bs.z());
-  reco::BeamSpot* beamspot = new BeamSpot(onlinePosition,
+  auto beamspot = std::make_unique<reco::BeamSpot>(onlinePosition,
 					 bs.sigmaZ(),
 					 bs.dxdz(),
 					 bs.dydz(),
@@ -1283,8 +1283,8 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
       t++;
     }
   }
-
-  double histWeight = weightMap->at("correctedNominal");
+  double histWeight =  1.0;
+  if(isMC) histWeight = weightMap->at("correctedNominal");
   uint i_tk = 0;
   uint nHistTracks = 0;
   for(scoutingTrackIter = ScoutingTrackHandle->begin(); scoutingTrackIter != ScoutingTrackHandle->end(); ++scoutingTrackIter){
@@ -1702,7 +1702,7 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
 	if(!isChargedStopDecayProductStatusOne(genParticleIter).first) continue;
 	float dPhi = 0;
 	if(doPhiCorrection){
-	  std::pair<double,double> correction = gen_dxy_correction(genParticleIter,beamspot);
+	  std::pair<double,double> correction = gen_dxy_correction(genParticleIter,beamspot.get());
 	  dPhi = fabs(scoutingTrackIter->phi()-correction.second);
 	}
 	else{
@@ -1747,7 +1747,7 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
       match_gen_dxy->push_back(dxy);
       float dxy_track = TMath::Sqrt(pow((ScoutingTrackHandle->begin()+match[1])->vx()-beamspot->x0(),2)+pow((ScoutingTrackHandle->begin()+match[1])->vy()-beamspot->y0(),2));
       match_diffDxy->push_back(dxy-dxy_track);
-      std::pair<double,double> correction = gen_dxy_correction((genParticle_handle->begin()+match[0]),beamspot);
+      std::pair<double,double> correction = gen_dxy_correction((genParticle_handle->begin()+match[0]),beamspot.get());
       float dxy_corrected = correction.first;
       match_gen_dxy->push_back(dxy_corrected);
       match_diffDxyCorrected->push_back(dxy_corrected-dxy_track);
@@ -1893,7 +1893,7 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
           if(!isDecayProduct.first) continue;
           float dPhi = 0;
           if(doPhiCorrection){
-            std::pair<double,double> correction = gen_dxy_correction(genParticleIter,beamspot);
+            std::pair<double,double> correction = gen_dxy_correction(genParticleIter,beamspot.get());
             dPhi = fabs(trk->phi()-correction.second);
           }
           else{

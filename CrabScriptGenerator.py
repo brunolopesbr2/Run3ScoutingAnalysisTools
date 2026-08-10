@@ -35,6 +35,30 @@ inputDatasets = ["/QCD-4Jets_Bin-HT-200to400_TuneCP5_13p6TeV_madgraphMLM-pythia8
                  "/StopStopbarTo2Dbar2D_M-800_ctau-0p1mm_100kEvts_v2/brlopesd-StopStopbarTo2Dbar2D_M-800_ctau-0p1mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
                  "/StopStopbarTo2Dbar2D_M-800_ctau-0p3mm_100kEvts_v2/brlopesd-StopStopbarTo2Dbar2D_M-800_ctau-0p3mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
                  "/StopStopbarTo2Dbar2D_M-800_ctau-0p7mm_100kEvts_v2/brlopesd-StopStopbarTo2Dbar2D_M-800_ctau-0p7mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-200_ctau-0p1mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-200_ctau-0p1mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-200_ctau-0p3mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-200_ctau-0p3mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-200_ctau-0p7mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-200_ctau-0p7mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-200_ctau-10mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-200_ctau-10mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-200_ctau-1mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-200_ctau-1mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-200_ctau-3mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-200_ctau-3mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-400_ctau-0p1mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-400_ctau-0p1mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-400_ctau-0p3mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-400_ctau-0p3mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-400_ctau-0p7mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-400_ctau-0p7mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-400_ctau-10mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-400_ctau-10mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-400_ctau-1mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-400_ctau-1mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-400_ctau-3mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-400_ctau-3mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-600_ctau-0p1mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-600_ctau-0p1mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-600_ctau-0p3mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-600_ctau-0p3mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-600_ctau-0p7mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-600_ctau-0p7mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-600_ctau-10mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-600_ctau-10mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-600_ctau-1mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-600_ctau-1mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-600_ctau-3mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-600_ctau-3mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-800_ctau-0p1mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-800_ctau-0p1mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-800_ctau-0p3mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-800_ctau-0p3mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-800_ctau-0p7mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-800_ctau-0p7mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-800_ctau-10mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-800_ctau-10mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-800_ctau-1mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-800_ctau-1mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
+                 "/StopStopbarTo2Bbar2B_M-800_ctau-3mm_100kEvts_v1/brlopesd-StopStopbarTo2Bbar2B_M-800_ctau-3mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER",
                  "/ScoutingPFRun3/Run2024C-v1/HLTSCOUT",
                  "/ScoutingPFRun3/Run2024D-v1/HLTSCOUT",
                  "/ScoutingPFRun3/Run2024E-v1/HLTSCOUT",
@@ -63,6 +87,27 @@ inputDatasets = ["/QCD-4Jets_Bin-HT-200to400_TuneCP5_13p6TeV_madgraphMLM-pythia8
                  "/GluGluH-Hto2Sto4D_Par-ctauS-10-MH-125-MS-40_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
                  "/GluGluH-Hto2Sto4D_Par-ctauS-10-MH-125-MS-55_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
                  "/GluGluH-Hto2Sto4D_Par-ctauS-10-MH-125-MS-7_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
+                 "/GluGluH-Hto2Sto4B_Par-ctauS-0p1-MH-125-MS-15_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
+                 "/GluGluH-Hto2Sto4B_Par-ctauS-0p1-MH-125-MS-1_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
+                 "/GluGluH-Hto2Sto4B_Par-ctauS-0p1-MH-125-MS-23_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
+                 "/GluGluH-Hto2Sto4B_Par-ctauS-0p1-MH-125-MS-30_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
+                 "/GluGluH-Hto2Sto4B_Par-ctauS-0p1-MH-125-MS-40_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
+                 "/GluGluH-Hto2Sto4B_Par-ctauS-0p1-MH-125-MS-55_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
+                 "/GluGluH-Hto2Sto4B_Par-ctauS-0p1-MH-125-MS-7_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
+                 "/GluGluH-Hto2Sto4B_Par-ctauS-1-MH-125-MS-15_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
+                 "/GluGluH-Hto2Sto4B_Par-ctauS-1-MH-125-MS-1_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
+                 "/GluGluH-Hto2Sto4B_Par-ctauS-1-MH-125-MS-23_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
+                 "/GluGluH-Hto2Sto4B_Par-ctauS-1-MH-125-MS-30_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
+                 "/GluGluH-Hto2Sto4B_Par-ctauS-1-MH-125-MS-40_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
+                 "/GluGluH-Hto2Sto4B_Par-ctauS-1-MH-125-MS-55_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
+                 "/GluGluH-Hto2Sto4B_Par-ctauS-1-MH-125-MS-7_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
+                 "/GluGluH-Hto2Sto4B_Par-ctauS-10-MH-125-MS-15_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
+                 "/GluGluH-Hto2Sto4B_Par-ctauS-10-MH-125-MS-1_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
+                 "/GluGluH-Hto2Sto4B_Par-ctauS-10-MH-125-MS-23_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
+                 "/GluGluH-Hto2Sto4B_Par-ctauS-10-MH-125-MS-30_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
+                 "/GluGluH-Hto2Sto4B_Par-ctauS-10-MH-125-MS-40_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
+                 "/GluGluH-Hto2Sto4B_Par-ctauS-10-MH-125-MS-55_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
+                 "/GluGluH-Hto2Sto4B_Par-ctauS-10-MH-125-MS-7_TuneCP5_13p6TeV_powheg-pythia8/RunIII2024Summer24MiniAOD-140X_mcRun3_2024_realistic_v26-v2/MINIAODSIM",
                  "/StealthSHH_mStop-300_mSo-100_ctau-0p1mm100kEvts_v2/brlopesd-StealthSHH_mStop-300_mSo-100_ctau-0p1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
                  "/StealthSHH_mStop-300_mSo-100_ctau-10mm100kEvts_v2/brlopesd-StealthSHH_mStop-300_mSo-100_ctau-10mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
                  "/StealthSHH_mStop-300_mSo-100_ctau-1mm100kEvts_v2/brlopesd-StealthSHH_mStop-300_mSo-100_ctau-1mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
@@ -129,8 +174,8 @@ inputDatasets = ["/QCD-4Jets_Bin-HT-200to400_TuneCP5_13p6TeV_madgraphMLM-pythia8
                  "/StealthSYY_mStop-900_mSo-675_ctau-3mm100kEvts_v2/brlopesd-StealthSYY_mStop-900_mSo-675_ctau-3mm_step4-miniAOD_100kEvts_v4-df1e99b50d14b85be33e7e4ab518ee3a/USER",
                  ]
 
-crossSections = [1961000000, 95620000, 13540000, 3033000, 883700, 383500, 125200, 26490, 311400000000, 58500000000, 25400000000, 762100, 762100] #Backgrounds should go first in dataset list with corresponding cross sections listed here
-tagSuffix = "v30-3to4Dxy"
+crossSections = [1961000000, 95620000, 13540000, 3033000, 883700, 383500, 125200, 26490, 311400000000, 58500000000, 25400000000, 762100*0.439, 762100*0.455] #Backgrounds should go first in dataset list with corresponding cross sections listed here
+tagSuffix = "v33-3to4Dxy"
 scouting = True
 
 for i in range(len(inputDatasets)):
@@ -172,14 +217,16 @@ for i in range(len(inputDatasets)):
         hasReco = True
         unitsPerJob = 60000
         splitting = 'EventAwareLumiBased'
+        memory = 2500
     elif "ScoutingPF" in dataset:
         tag = dataset[16:].split("-v1")[0] + "_Tree_" + tagSuffix
         dataBase = "global"
         #totalUnits = 900000000
         isMC = False
         hasReco = False
-        unitsPerJob = 10
+        unitsPerJob = 20
         splitting = 'LumiBased'
+        memory = 3000
         if "2024C" in dataset:
             totalUnits = 24298
         elif "2024D" in dataset:
@@ -201,8 +248,9 @@ for i in range(len(inputDatasets)):
         totalUnits = 6000000
         isMC = True
         hasReco = True
-        unitsPerJob = 100000
+        unitsPerJob = 200000
         splitting = 'EventAwareLumiBased'
+        memory = 2500
     elif "Stealth" in dataset:
         tag = tag = dataset[1:].split("100kEvts")[0] + "_Tree_" + tagSuffix            
         dataBase = "phys03"
@@ -211,14 +259,16 @@ for i in range(len(inputDatasets)):
         hasReco = True
         unitsPerJob = 60000
         splitting = 'EventAwareLumiBased'
+        memory = 2500
     else:
         tag = dataset[1:].split("_Tune")[0] + "_Tree_" + tagSuffix
         dataBase = "global"
         totalUnits = 125000000
         isMC = True
         hasReco = True
-        unitsPerJob = 100000
+        unitsPerJob = 200000
         splitting = 'EventAwareLumiBased'
+        memory = 2500
     string = f"""from CRABClient.UserUtilities import config \n
 config = config() \n
 theTag = '{tag}' \n
@@ -226,7 +276,7 @@ config.General.requestName = theTag \n
 config.JobType.pluginName = 'Analysis' \n
 config.JobType.psetName = '../VertexNTupleMaker.py' \n
 config.JobType.inputFiles = ['/afs/cern.ch/user/r/rmccarth/private/scouting/CMSSW_14_0_18_patch1/src/Run3ScoutingAnalysisTools/Summer24Prompt24_RunBCDEFGHI.root'] \n
-config.JobType.maxMemoryMB = 2500 \n
+config.JobType.maxMemoryMB = 3000 \n
 config.Data.inputDBS = '{dataBase}' \n
 config.Data.inputDataset = '{dataset}' \n
 config.Data.splitting = '{splitting}' \n
@@ -238,8 +288,6 @@ config.JobType.pyCfgParams = ['isScouting={scouting}','lumi=109.99','crossSectio
 config.Data.outputDatasetTag = theTag \n
 config.Data.outLFNDirBase = '/store/group/phys_exotica/DVScouting' \n
 config.Site.storageSite = 'T2_CH_CERN' \n
-config.Data.ignoreLocality = True \n
-config.Site.whitelist = ['T2_*', 'T1_*'] \n
 """ 
 
     # Write to a temporary file

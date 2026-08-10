@@ -82,6 +82,7 @@ class TriggerFilter : public edm::one::EDFilter<edm::one::SharedResources, edm::
       const edm::EDGetTokenT<GenEventInfoProduct> GeneratorToken_;
       const edm::EDGetTokenT<std::vector<reco::GenJet>> GenJetToken_;
       const edm::EDGetTokenT<edm::TriggerResults> triggerResultsToken;
+      
 
       double luminosity;
       double crossSection;
@@ -461,8 +462,8 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
     h_weights_LUMCorrected_NoTrigger->Fill("None",weightMap->at("corrected_NoTrigger"));
     h_weightsSquared_LUMCorrected_NoTrigger->Fill("None",pow(weightMap->at("corrected_NoTrigger"),2));
 
-    h_weights_LUMCorrected->Fill("None",weightMap->at("correctedNominal"));
-    h_weightsSquared_LUMCorrected->Fill("None",pow(weightMap->at("correctedNominal"),2));
+    h_weights_LUMCorrected->Fill("None",weightMap->at("corrected_NoTrigger"));
+    h_weightsSquared_LUMCorrected->Fill("None",pow(weightMap->at("corrected_NoTrigger"),2));
   }
   else{
     genWeight = 1;
@@ -688,6 +689,7 @@ TriggerFilter::beginJob()
     tree->Branch("nGenJets", &nGenJets, "nGenJets/I");
     tree->Branch("genHT", &genHT, "genHT/F");
   }
+
 }
 
 // ------------ method called once each job just after ending the event loop  ------------

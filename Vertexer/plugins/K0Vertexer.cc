@@ -330,7 +330,7 @@ void K0Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
     }
   }
   reco::BeamSpot::Point onlinePosition(bs.x(), bs.y(), bs.z());
-  reco::BeamSpot* beamspot = new reco::BeamSpot(onlinePosition,
+  auto beamspot = std::make_unique<reco::BeamSpot>(onlinePosition,
 					  bs.sigmaZ(),
 					  bs.dxdz(),
 					  bs.dydz(),
@@ -514,7 +514,7 @@ void K0Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
       const TVector3 vp42(vtx_p4.X(), vtx_p4.Y(), 0);
       const TVector3 flight2(vertex.x() - bsx, vertex.y() - bsy, 0);
       const double costh2 = vp42.Unit().Dot(flight2.Unit());
-      std::cout<<"vertex params: costh2 "<<costh2<<" vtxMass "<<vtxMass<<std::endl;
+      //std::cout<<"vertex params: costh2 "<<costh2<<" vtxMass "<<vtxMass<<std::endl;
       if((costh2>=0.9) && (vtxMass>=0.3) && (vtxMass<=0.7) && (netCharge==0)){
 	vertices->push_back(vertex);
 	vtxMasses.push_back(vtxMass);
@@ -678,7 +678,7 @@ void K0Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   //////////////////////////////////////////////////////////////////////
   
   //Save the vertices
-  std::cout<<"found "<<vertices->size()<<" kaon vertices"<<std::endl;
+  //std::cout<<"found "<<vertices->size()<<" kaon vertices"<<std::endl;
   iEvent.emplace(putToken_, std::move(*vertices));
 }
 

@@ -97,7 +97,7 @@ private:
   int truePU;
   //std::vector<double> PUCorrectionArray;
   bool isMC;
-
+  /*
   TH1D* h_dxyErr_weighted_sum_barrel;
   TH1D* h_dszErr_weighted_sum_barrel;
   TH1D* h_dszdxyCov_weighted_sum_barrel;
@@ -133,7 +133,7 @@ private:
   TH1D* h_dszdxyCov_weighted_sq_sum_disk_jetMatched;
   TH1D* h_weight_sum_disk_jetMatched;
   TH1D* h_weight_sq_sum_disk_jetMatched;
-  
+  */
   const double pt_min_cut;
   const double dxySig_min_cut;
   const double dxySig_max_cut;
@@ -333,7 +333,7 @@ void Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
     }
   }
   reco::BeamSpot::Point onlinePosition(bs.x(), bs.y(), bs.z());
-  reco::BeamSpot* beamspot = new reco::BeamSpot(onlinePosition,
+  auto beamspot = std::make_unique<reco::BeamSpot>(onlinePosition,
 					  bs.sigmaZ(),
 					  bs.dxdz(),
 					  bs.dydz(),
@@ -354,7 +354,7 @@ void Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   const reco::Vertex fake_bs_vtx(beamspot->position(), beamspot->covariance3D());
 
   //double genWeight = 1.0;
-  double weight = 1.0;
+  //double weight = 1.0;
   
   if(isMC){
     /*
@@ -376,7 +376,7 @@ void Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
     */
     edm::Handle<std::map<std::string, float>> weightMap;
     iEvent.getByToken(weightsToken_, weightMap);
-    weight = weightMap->at("correctedNominal");
+    //weight = weightMap->at("correctedNominal");
   }
 
   //Get jets for matching to tracks
@@ -400,7 +400,8 @@ void Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   // Build the references to the tracks
   std::vector<reco::TrackRef> seed_track_refs;
   std::map<reco::TrackRef, size_t> seed_track_index_map;
-  
+
+  uint nHistTracks = 0;
   for (size_t i_tk = 0; i_tk < seed_track_handle->size(); i_tk++){
     const edm::Ref<reco::TrackCollection> tk_ref(seed_track_handle, i_tk);
     reco::TransientTrack ttk = tt_builder.build(tk_ref);
@@ -408,7 +409,10 @@ void Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
     //std::pair<bool, Measurement1D> ttk_dist = track_dist(ttk, fake_bs_vtx);
     float IP_sig = ttk_dist.second.significance();
     if ((tk_ref->pt()>pt_min_cut) && (tk_ref->hitPattern().numberOfValidPixelHits() > npixelHits_min_cut) && (tk_ref->hitPattern().numberOfValidStripHits() > nstripHits_min_cut) && (tk_ref->hitPattern().trackerLayersWithMeasurement() > ntrackerLayers_min_cut) && (fabs(tk_ref->eta())<2.4)){
+      //std::cout<<"vertexer track pt: "<<tk_ref->pt()<<" pixel: "<<tk_ref->hitPattern().numberOfValidPixelHits()<<" strips: "<<tk_ref->hitPattern().numberOfValidStripHits()<<" ntrackerlayers: "<<tk_ref->hitPattern().trackerLayersWithMeasurement()<<std::endl;
+      nHistTracks++;
       //if ((tk_ref->pt()>0.9) && (fabs(tk_ref->eta())<2.4)){
+      /*
       if(fabs(tk_ref->eta())<1.5){
 	h_dxyErr_weighted_sum_barrel->Fill(tk_ref->pt(),weight*tk_ref->dxyError());
 	h_dszErr_weighted_sum_barrel->Fill(tk_ref->pt(),weight*tk_ref->dszError());
@@ -429,7 +433,7 @@ void Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 	h_weight_sum_disk->Fill(tk_ref->pt(),weight);
 	h_weight_sq_sum_disk->Fill(tk_ref->pt(),pow(weight,2));
       }
-
+      */
       int i_jet = 0;
       int i_bestMatch = -1;
       float bestDeltaR = 9999999;
@@ -443,6 +447,7 @@ void Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
       }
 
       if(i_bestMatch!=-1){
+	/*
 	if(fabs(tk_ref->eta())<1.5){
 	  h_dxyErr_weighted_sum_barrel_jetMatched->Fill(tk_ref->pt(),weight*tk_ref->dxyError());
 	  h_dszErr_weighted_sum_barrel_jetMatched->Fill(tk_ref->pt(),weight*tk_ref->dszError());
@@ -463,7 +468,7 @@ void Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 	  h_weight_sum_disk_jetMatched->Fill(tk_ref->pt(),weight);
 	  h_weight_sq_sum_disk_jetMatched->Fill(tk_ref->pt(),pow(weight,2));
 	}
-      
+	*/
 	if((((dxySig_max_cut>0) && (IP_sig < dxySig_max_cut)) || (dxySig_max_cut<=0)) && (IP_sig > dxySig_min_cut)){
 	  //if(IP_sig > 2){
 	  seed_track_refs.push_back(tk_ref);
@@ -471,11 +476,14 @@ void Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 	}
       }
     }
+    else{
+      //std::cout<<"vertexer failed track pt: "<<tk_ref->pt()<<" pixel: "<<tk_ref->hitPattern().numberOfValidPixelHits()<<" strips: "<<tk_ref->hitPattern().numberOfValidStripHits()<<" ntrackerlayers: "<<tk_ref->hitPattern().trackerLayersWithMeasurement()<<std::endl;
+    }
     //if ((IP_sig > 4) && (tk_ref->pt()>0.9)) seed_track_refs.push_back(tk_ref);
     if (verbose) printf("Build track references. IP_sig = %f\n", IP_sig);
   }
-  
-  
+  //std::cout<<"vertexer nHistTracks: "<<nHistTracks<<std::endl;
+  //std::cout<<"vertexer nTracks: "<<seed_track_handle->size()<<std::endl;
   //Build transient tracks from reco tracks
   std::vector<reco::TransientTrack> seed_tracks;
 
@@ -1012,6 +1020,7 @@ void Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 // ------------ method called once each stream before processing any runs, lumis or events  ------------
 void Vertexer::beginStream(edm::StreamID) {
   // please remove this method if not needed
+  /*
   edm::Service<TFileService> fs;
   h_dxyErr_weighted_sum_barrel = fs->make<TH1D>("dxyErr_weighted_sum_barrel",";Track p_{T}; Weighted Sum",200,0,200);
   h_dszErr_weighted_sum_barrel = fs->make<TH1D>("dszErr_weighted_sum_barrel",";Track p_{T}; Weighted Sum",200,0,200);
@@ -1048,11 +1057,13 @@ void Vertexer::beginStream(edm::StreamID) {
   h_dszdxyCov_weighted_sq_sum_disk_jetMatched = fs->make<TH1D>("dszdxyCov_weighted_sq_sum_disk_jetMatched",";Track p_{T}; Weighted Sum",200,0,200);
   h_weight_sum_disk_jetMatched = fs->make<TH1D>("weight_sum_disk_jetMatched",";Track p_{T}; Weight Sum",200,0,200);
   h_weight_sq_sum_disk_jetMatched = fs->make<TH1D>("weight_sq_sum_disk_jetMatched",";Track p_{T}; Weight Squared Sum",200,0,200);
+  */
 }
 
 // ------------ method called once each stream after processing all runs, lumis and events  ------------
 void Vertexer::endStream() {
   // please remove this method if not needed
+  /*
   h_dxyErr_weighted_sum_barrel->Draw();
   h_dxyErr_weighted_sum_barrel->Write();
   
@@ -1150,6 +1161,7 @@ void Vertexer::endStream() {
   
   h_weight_sq_sum_disk_jetMatched->Draw();
   h_weight_sq_sum_disk_jetMatched->Write();
+  */
 }
 
 // ------------ method called when starting to processes a run  ------------
