@@ -44,6 +44,17 @@
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "FWCore/Utilities/interface/RandomNumberGenerator.h"
 
+#include "RecoVertex/VertexTools/interface/VertexDistance3D.h"
+#include "RecoVertex/VertexTools/interface/VertexDistanceXY.h"
+#include "TrackingTools/IPTools/interface/IPTools.h"
+#include "TrackingTools/Records/interface/TransientTrackRecord.h"
+#include "TrackingTools/TransientTrack/interface/TransientTrack.h"
+#include "TrackingTools/TransientTrack/interface/TransientTrackBuilder.h"
+#include "TrackingTools/TrajectoryState/interface/TrajectoryStateClosestToPoint.h"
+
+#include "CondFormats/DataRecord/interface/BeamSpotOnlineHLTObjectsRcd.h"
+#include "CondFormats/BeamSpotObjects/interface/BeamSpotObjects.h"
+#include "CondFormats/BeamSpotObjects/interface/BeamSpotOnlineObjects.h"
 
 //Scouting data formats
 #include "DataFormats/Scouting/interface/Run3ScoutingElectron.h"
@@ -62,6 +73,9 @@
 #include "DataFormats/TrackReco/interface/TrackFwd.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
+
+#include "CommonTools/UtilAlgos/interface/TFileService.h"
+#include "TH1.h"
 
 
 //Get from JMT
@@ -97,8 +111,11 @@ private:
   const edm::EDGetTokenT<std::vector<reco::Vertex>> primary_vertices_token;
   const edm::EDGetTokenT<std::vector<reco::PFJet>> jets_token;
   const edm::EDGetTokenT<std::vector<Run3ScoutingMuon>> muons_token;
+  const edm::ESGetToken<TransientTrackBuilder, TransientTrackRecord> token_builder;
+  const edm::ESGetToken<BeamSpotOnlineObjects, BeamSpotOnlineHLTObjectsRcd> bsOnlineToken_;
 
   //Input parameters, in order
+  bool isMC;
   const double min_jet_pt;
   const int min_jet_ntracks;
   const double max_jet_track_dR;
@@ -107,10 +124,10 @@ private:
   const double track_keep_prob;
   const double sig_theta;
   const double sig_phi;
+  const std::string trackEffVariation; 
 
   //Output tokens, in order 
   edm::EDPutTokenT<reco::TrackCollection> outputTrackToken_;
-  edm::EDPutTokenT<reco::TrackCollection> unmovedTrackToken_;
   edm::EDPutTokenT<reco::TrackCollection> movedTrackToken_;
   edm::EDPutTokenT<int> nPreselJetsToken_;
   edm::EDPutTokenT<std::vector<reco::PFJet>> movedJetsToken_;
@@ -124,6 +141,7 @@ private:
   bool pass_presel;
   TVector3 move;
   int nPV;
+  TH1F* trackEff;
 
   //Auxiliary functions
 
@@ -146,6 +164,9 @@ TrackMover::TrackMover(const edm::ParameterSet& iConfig)
   primary_vertices_token(consumes<reco::VertexCollection>(iConfig.getParameter<edm::InputTag>("primary_vertices_src"))),
   jets_token(consumes<std::vector<reco::PFJet>>(iConfig.getParameter<edm::InputTag>("jets_src"))),
   muons_token(consumes<std::vector<Run3ScoutingMuon>>(iConfig.getParameter<edm::InputTag>("muons_src"))),
+  token_builder(esConsumes(edm::ESInputTag("", "TransientTrackBuilder"))),
+  bsOnlineToken_(esConsumes<BeamSpotOnlineObjects, BeamSpotOnlineHLTObjectsRcd>()),
+  isMC(iConfig.existsAs<bool>("isMC") ?  iConfig.getParameter<bool>  ("isMC") : false),
   min_jet_pt(iConfig.getParameter<double>("min_jet_pt")),
   min_jet_ntracks(iConfig.getParameter<int>("min_jet_ntracks")),
   max_jet_track_dR(iConfig.getParameter<double>("max_jet_track_dR")),
@@ -154,14 +175,13 @@ TrackMover::TrackMover(const edm::ParameterSet& iConfig)
   track_keep_prob(iConfig.getParameter<double>("track_keep_prob")),
   sig_theta(iConfig.getParameter<double>("sig_theta")),
   sig_phi(iConfig.getParameter<double>("sig_phi")),
+  trackEffVariation(iConfig.getParameter<std::string>("trackEffVariation")),
   outputTrackToken_{produces<reco::TrackCollection>("outputTracks")},
-  unmovedTrackToken_{produces<reco::TrackCollection>("unmovedTracks")},
   movedTrackToken_{produces<reco::TrackCollection>("movedTracks")},
   nPreselJetsToken_{produces<int>("npreseljets")},
   movedJetsToken_{produces<std::vector<reco::PFJet>>("jetsUsed")},
   flightAxisToken_{produces<std::vector<double>>("flightAxis")},
   movedVertexToken_{produces<std::vector<double> >("moveVertex")}
-
 {
   edm::Service<edm::RandomNumberGenerator> rng;
   if (!rng.isAvailable())
@@ -192,7 +212,6 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   //auto move_vertex = std::make_unique<std::vector<double>>(3, 0.);
 
   std::unique_ptr<reco::TrackCollection> output_tracks(new reco::TrackCollection);
-  std::unique_ptr<reco::TrackCollection> unmoved_tracks(new reco::TrackCollection);
   std::unique_ptr<reco::TrackCollection> moved_tracks(new reco::TrackCollection);
   std::unique_ptr<std::vector<reco::PFJet>> jets_used(new std::vector<reco::PFJet>);
   std::unique_ptr<std::vector<double>> flight_vect(new std::vector<double>(3, 0.));
@@ -203,6 +222,8 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   //auxiliary vectors
   std::vector<reco::PFJet> presel_jets;
   std::vector<reco::PFJet> selected_jets;
+
+  double track_keep_prob_perEvent = track_keep_prob;
 
   edm::Service<edm::RandomNumberGenerator> rng;
   CLHEP::HepRandomEngine& rng_engine = rng->getEngine(iEvent.streamID());
@@ -231,6 +252,33 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   Handle<reco::TrackCollection> tracksH;
   iEvent.getByToken(tracks_token, tracksH);
 
+  //get online beamspot
+  const auto& bs = iSetup.getData(bsOnlineToken_);
+  reco::BeamSpot::CovarianceMatrix onlineCovariance;
+  for(uint i=0; i<7; i++){
+    for(uint j=i; j<7; j++){
+      onlineCovariance(i,j) = bs.covariance(i,j);
+    }
+  }
+  reco::BeamSpot::Point onlinePosition(bs.x(), bs.y(), bs.z());
+  reco::BeamSpot* beamspot = new reco::BeamSpot(onlinePosition,
+					 bs.sigmaZ(),
+					 bs.dxdz(),
+					 bs.dydz(),
+					 bs.beamWidthX(),
+					 onlineCovariance,
+					 static_cast<reco::BeamSpot::BeamType>(bs.beamType())
+					 );
+  beamspot->setBeamWidthY(bs.beamWidthY());
+  beamspot->setEmittanceX(bs.emittanceX());
+  beamspot->setEmittanceY(bs.emittanceY());
+  beamspot->setbetaStar(bs.betaStar());
+
+  const reco::Vertex fake_bs_vtx(beamspot->position(), beamspot->covariance3D());
+
+  //TransientTrack builder for later
+  auto const &tt_builder = iSetup.getData(token_builder);
+
   //jets preselection
   presel_jets.clear();
 
@@ -240,9 +288,16 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         jet_ntracks = 0;
         if (tracksH.isValid()) {
           for (auto tracks_iter = tracksH->begin(); tracks_iter != tracksH->end(); ++tracks_iter) {
-            jet_track_dR = reco::deltaR(tracks_iter->eta(), tracks_iter->phi(), jets_iter->eta(), jets_iter->phi());
-            if (jet_track_dR < max_jet_track_dR) {
-              jet_ntracks++;
+            //Track quality requirements
+            float pt_min_cut = 1.0;
+            int  npixelHits_min_cut = 2;
+            int nstripHits_min_cut = 1;
+            int ntrackerLayers_min_cut = 5;
+            if ((tracks_iter->pt()>pt_min_cut) && (tracks_iter->hitPattern().numberOfValidPixelHits() > npixelHits_min_cut) && (tracks_iter->hitPattern().numberOfValidStripHits() > nstripHits_min_cut) && (tracks_iter->hitPattern().trackerLayersWithMeasurement() > ntrackerLayers_min_cut) && (fabs(tracks_iter->eta())<2.4)){
+              jet_track_dR = reco::deltaR(tracks_iter->eta(), tracks_iter->phi(), jets_iter->eta(), jets_iter->phi());
+              if (jet_track_dR < max_jet_track_dR) {
+                jet_ntracks++;
+              }
             }
           }
         }
@@ -297,8 +352,10 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
     //std::cout<<"Move x: "<<move.x()<<", move vertex x: "<<move_vertex->at(0)<<", PV x: "<<primary_vertices->at(0).x()<<std::endl;
   }
 
+
   //Copy input tracks that do not match selected jets
   //Move the matched tracks to the "move vertex"
+  int itk = 0;
   for (auto tracks_iter = tracksH->begin(); tracks_iter != tracksH->end(); ++tracks_iter) {
     bool to_move = false;
     for (reco::PFJet jet : selected_jets){
@@ -311,46 +368,73 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
     done_check_to_move:
     
     if (to_move){
-
-      //can add quality criteria for the tracks here
-      //move only quality tracks 
-      const double pt = tracks_iter->pt();
-      const int npxlayers = tracks_iter->hitPattern().pixelLayersWithMeasurement();
-      const int nstlayers = tracks_iter->hitPattern().stripLayersWithMeasurement();
-      const auto trackLostInnerHits = tracks_iter->hitPattern().numberOfLostHits(reco::HitPattern::MISSING_INNER_HITS);
-      int min_r = 2000000000;
-      for (int i = 1; i <= 4; ++i){
-          if (tracks_iter->hitPattern().hasValidHitInPixelLayer(PixelSubdetector::PixelBarrel,i)) {
-            min_r = i;
-            break;
-          }
-      }
-      if (!(pt > 1.0 && npxlayers >= 2 && nstlayers >= 6 && (min_r <= 1.0 || (min_r == 2.0 && trackLostInnerHits == 0) ))) continue;
-      
-      
-      if (rint.fire(1,track_keep_prob) == 0) continue; //To toss out a track randomly 
-
-      unmoved_tracks->push_back(*tracks_iter);
+      //Track quality requirements
+      float pt_min_cut = 1.0;
+      int  npixelHits_min_cut = 2;
+      int nstripHits_min_cut = 1;
+      int ntrackerLayers_min_cut = 5;
+      if ( !((tracks_iter->pt()>pt_min_cut) && (tracks_iter->hitPattern().numberOfValidPixelHits() > npixelHits_min_cut) && (tracks_iter->hitPattern().numberOfValidStripHits() > nstripHits_min_cut) && (tracks_iter->hitPattern().trackerLayersWithMeasurement() > ntrackerLayers_min_cut) && (fabs(tracks_iter->eta())<2.4)) ) continue;
 
       reco::TrackBase::Point new_point(tracks_iter->vx() + move.x(),
-                                        tracks_iter->vy() + move.y(),
-                                        tracks_iter->vz() + move.z());
+                                  tracks_iter->vy() + move.y(),
+                                  tracks_iter->vz() + move.z());
+      reco::Track new_tk(tracks_iter->chi2(), tracks_iter->ndof(), new_point, tracks_iter->momentum(), tracks_iter->charge(), tracks_iter->covariance(), tracks_iter->algo());
+            
+      /* Not considering the track eff correction for now
+      //Update probability to drop tracks based on the track reconstruction efficiency
+      if(isMC){
+        if(new_tk.dxy() > 0 && new_tk.dxy() < 0.15){ //For dxy > 0.15, track efficiency corrections are not well defined
+          int bin = trackEff->GetXaxis()->FindBin(new_tk.dxy());
+          double correction = trackEff->GetBinContent(bin);
 
+          track_keep_prob_perEvent = std::min(track_keep_prob_perEvent * correction, 1.0);
+        }
+      }
+      */
 
-      output_tracks->push_back(reco::Track(tracks_iter->chi2(), tracks_iter->ndof(), new_point, tracks_iter->momentum(), tracks_iter->charge(), tracks_iter->covariance(), tracks_iter->algo()));
-      reco::Track& new_tk = output_tracks->back();
+      if (rint.fire(1,track_keep_prob_perEvent) == 0) continue; //To toss out a track randomly 
+
+      //impose same PV matching requirement as scouting tracks
+      bool keepTrack = false;
+      double originRadius = 0.1;
+      double originHalfLength = 0.3; //same parameters as in the 2024 trigger menu
+
+      //get the closest point from the new track to the beamspot
+      reco::TransientTrack ttk = tt_builder.build(new_tk);
+
+      GlobalPoint bsPos(
+        fake_bs_vtx.x(),
+        fake_bs_vtx.y(),
+        fake_bs_vtx.z()
+      );
+
+      TrajectoryStateClosestToPoint tscp = ttk.trajectoryStateClosestToPoint(bsPos);
+      GlobalPoint pca = tscp.theState().position();
+
+      for (reco::VertexCollection::const_iterator iv = primary_vertices->begin(); iv != primary_vertices->end(); ++iv) {
+        GlobalPoint aPV(iv->position().x(), iv->position().y(), iv->position().z());
+        double distR2 = std::pow((pca.x() - aPV.x()), 2) + std::pow((pca.y() - aPV.y()), 2);
+        double distZ = fabs(pca.z() - aPV.z());
+        if (distR2 < std::pow(originRadius, 2) && distZ < originHalfLength) {
+          keepTrack = true;
+        } 
+      }
+      if(!keepTrack) continue;
+
       new_tk.setQualityMask(tracks_iter->qualityMask());
       new_tk.setNLoops(tracks_iter->nLoops());
       reco::HitPattern* hp = const_cast<reco::HitPattern*>(&new_tk.hitPattern());  *hp = tracks_iter->hitPattern(); 
+
+      output_tracks->push_back(new_tk);
       moved_tracks->push_back(new_tk);
     }
     else {
       output_tracks->push_back(*tracks_iter);
     }
+    itk++;
   }
 
   iEvent.emplace(outputTrackToken_, std::move(*output_tracks));
-  iEvent.emplace(unmovedTrackToken_, std::move(*unmoved_tracks));
   iEvent.emplace(movedTrackToken_, std::move(*moved_tracks));
   iEvent.emplace(nPreselJetsToken_, static_cast<int>(presel_jets.size()));
   iEvent.emplace(movedJetsToken_, std::move(*jets_used));
@@ -361,6 +445,9 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 // ------------ method called once each stream before processing any runs, lumis or events  ------------
 void TrackMover::beginStream(edm::StreamID) {
   // please remove this method if not needed
+  
+  TFile* effFile = TFile::Open("TrackEffCorrection.root", "READ");
+  trackEff = (TH1F*)effFile->Get(trackEffVariation.c_str());
 }
 
 // ------------ method called once each stream after processing all runs, lumis and events  ------------

@@ -16,4 +16,7 @@
 <use name="SimGeneral/HepPDTRecord"/>
 <use name="SimTracker/TrackAssociation"/>
 <use name="TrackingTools/Records"/>
+<use name="correctionlib"/>
+<use name="CondFormats/BeamSpotObjects"/>
+<use name="CondFormats/DataRecord"/>
 <flags EDM_PLUGIN="1"/>

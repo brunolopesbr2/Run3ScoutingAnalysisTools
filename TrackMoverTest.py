@@ -31,7 +31,7 @@ options.register('crossSection',
                  "Cross Section for weighting"
     )
 options.register('isMC',
-                 True,
+                 False,
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.bool,
                  "If using MC or data"
@@ -42,6 +42,21 @@ options.register('PUFile',
                  VarParsing.VarParsing.varType.string,
                  "Name of pileup correction file to use"
     )
+
+options.register('useLooseJets',
+                 False,
+                 VarParsing.VarParsing.multiplicity.singleton,
+                 VarParsing.VarParsing.varType.bool,
+                 "Whether to select loose or tight jets on the EventSkim"
+)
+
+options.register('validation',
+                 False,
+                 VarParsing.VarParsing.multiplicity.singleton,
+                 VarParsing.VarParsing.varType.bool,
+                 "Validation mode. Disables the event veto."
+)
+
 
 ## Trigger corrections to use
 options.register('TriggerCorrectionsNominal',
@@ -88,7 +103,7 @@ process.options = cms.untracked.PSet(
 process.MessageLogger.cerr.FwkSummary.reportEvery = 100
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(300) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(30000) )
 PUCorrectionData = np.load(options.PUFile)
 
 TriggerCorrectionNominal = np.load(options.TriggerCorrectionsNominal)
@@ -99,7 +114,7 @@ TriggerCorrectionBinEdge = np.load(options.TriggerCorrectionsBinEdge)
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring(
         #MC test file
-        '/store/mc/RunIII2024Summer24MiniAOD/QCD-4Jets_Bin-HT-1000to1200_TuneCP5_13p6TeV_madgraphMLM-pythia8/MINIAODSIM/140X_mcRun3_2024_realistic_v26-v2/100000/00f7403b-49bf-4efd-9b8f-0398bd61d910.root'
+        #'/store/mc/RunIII2024Summer24MiniAOD/QCD-4Jets_Bin-HT-1000to1200_TuneCP5_13p6TeV_madgraphMLM-pythia8/MINIAODSIM/140X_mcRun3_2024_realistic_v26-v2/100000/00f7403b-49bf-4efd-9b8f-0398bd61d910.root'
         #'/store/user/brlopesd/StopStopbarTo2Dbar2D_M-200_CTau-1mm_Summer24_100k_v2/StopStopbarTo2Dbar2D_M-200_CTau-1mm_Summer24_100k_miniAOD_v2/250214_150834/0000/stop_dbar_miniAOD_1.root'
         #Data test file
         #'/store/data/Run2024D/ScoutingPFRun3/HLTSCOUT/v1/000/380/945/00000/cdf45723-07c4-4b41-9595-f368f2929369.root'
@@ -113,6 +128,8 @@ process.source = cms.Source("PoolSource",
         #'/store/data/Run2024E/ScoutingPFRun3/HLTSCOUT/v1/000/381/053/00000/c0ba031e-c25b-426a-975b-aa058276df6c.root'
         #Run 382255 LS 79
         #'/store/data/Run2024F/ScoutingPFRun3/HLTSCOUT/v1/000/382/255/00000/ac42dc85-581c-438a-b536-3abbfe4eef90.root'
+        #Era E Run 381544 LS 1096
+        '/store/data/Run2024E/ScoutingPFRun3/HLTSCOUT/v1/000/381/544/00000/410771c4-3829-4638-8b0a-5126be4cacc9.root'
         #New lifetime stop sample
         #'/StopStopbarTo2Dbar2D_M-400_ctau-0p1mm_100kEvts_v2/brlopesd-StopStopbarTo2Dbar2D_M-400_ctau-0p1mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER'
         #offline test
@@ -277,6 +294,8 @@ process.triggerFilter = cms.EDFilter('TriggerFilter',
                                      crossSection = cms.double(options.crossSection), # cross section in fb
                                      truePileup        = truePileupTag,
                                      PUCorrectionArray = cms.vdouble(*PUCorrectionData.flatten().tolist()),
+                                     L1et = cms.InputTag("gtStage2Digis", "EtSum"),
+                                     L1HTThreshold = cms.double(0.0),
                                      l1Seeds           = cms.vstring(L1Info),
                                      pfjets            = pfjetsTag,
                                      patjets           = patjetsTag,
@@ -289,8 +308,8 @@ process.triggerFilter = cms.EDFilter('TriggerFilter',
                                      triggerUp = cms.vdouble(*TriggerCorrectionUp.flatten().tolist()),
                                      triggerDown = cms.vdouble(*TriggerCorrectionDown.flatten().tolist()),
                                      triggerEdge = cms.vdouble(*TriggerCorrectionBinEdge.flatten().tolist()),
-                                     useLooseJets = cms.bool(False),
-                                     val = cms.bool(False)
+                                     useLooseJets = cms.bool(options.useLooseJets),
+                                     val = cms.bool(options.validation)
                                      )
 
 process.RandomNumberGeneratorService = cms.Service("RandomNumberGeneratorService",
@@ -305,6 +324,7 @@ process.trackMover = cms.EDProducer('TrackMover',
                                     primary_vertices_src = cms.InputTag("hltScoutingUnpackProducer", "PrimaryVertex"),
                                     jets_src = cms.InputTag("triggerFilter", "pfjets"),
                                     muons_src = cms.InputTag("hltScoutingMuonPackerNoVtx"),
+                                    isMC = cms.bool(options.isMC),
                                     min_jet_pt = cms.double(30.),
                                     min_jet_ntracks = cms.int32(2),
                                     max_jet_track_dR = cms.double(0.4),
@@ -312,7 +332,8 @@ process.trackMover = cms.EDProducer('TrackMover',
                                     tau = cms.double(1.0),
                                     track_keep_prob = cms.double(1.),
                                     sig_theta = cms.double(0.2),
-                                    sig_phi = cms.double(0.2)
+                                    sig_phi = cms.double(0.2),
+                                    trackEffVariation = cms.string("ratio") #ratio, ratio_plus1sigma, ratio_minus1sigma
 )
 
 process.Vertexer = cms.EDProducer('Vertexer',
@@ -364,7 +385,6 @@ process.vertexEffTree = cms.EDAnalyzer('VertexEffAnalyzer',
                                         original_tracks = cms.InputTag("hltScoutingUnpackProducer", "Track"),
                                         tracks = cms.InputTag('trackMover', 'outputTracks'),
                                         moved_tracks = cms.InputTag('trackMover', 'movedTracks'),
-                                        unmoved_tracks = cms.InputTag('trackMover', 'unmovedTracks'),
                                         move_vertex = cms.InputTag('trackMover', 'moveVertex'),
                                         vertices = cms.InputTag("Vertexer"),
                                         n_presel_jets = cms.InputTag('trackMover', 'npreseljets'),
@@ -388,9 +408,9 @@ if(options.doJEC):
         process.hltAK4PFResidualCorrector *
         process.hltAK4PFCorrector *
         process.scoutingPFJetCorrected *
-        process.hltScoutingUnpackProducer *
         process.gtStage2Digis *
         process.triggerFilter *
+        process.hltScoutingUnpackProducer *
         process.trackMover *
         process.offlineBeamSpot *
         process.Vertexer *
@@ -399,9 +419,9 @@ if(options.doJEC):
 else:
     process.p = cms.Path(
         process.scoutingToRecoJets *
-        process.hltScoutingUnpackProducer *
         process.gtStage2Digis *
         process.triggerFilter *
+        process.hltScoutingUnpackProducer *
         process.trackMover *
         process.offlineBeamSpot *
         process.Vertexer *
