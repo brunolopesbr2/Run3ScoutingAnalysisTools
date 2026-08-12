@@ -288,15 +288,21 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         jet_ntracks = 0;
         if (tracksH.isValid()) {
           for (auto tracks_iter = tracksH->begin(); tracks_iter != tracksH->end(); ++tracks_iter) {
-            //Track quality requirements
-            float pt_min_cut = 1.0;
-            int  npixelHits_min_cut = 2;
-            int nstripHits_min_cut = 1;
-            int ntrackerLayers_min_cut = 5;
-            if ((tracks_iter->pt()>pt_min_cut) && (tracks_iter->hitPattern().numberOfValidPixelHits() > npixelHits_min_cut) && (tracks_iter->hitPattern().numberOfValidStripHits() > nstripHits_min_cut) && (tracks_iter->hitPattern().trackerLayersWithMeasurement() > ntrackerLayers_min_cut) && (fabs(tracks_iter->eta())<2.4)){
-              jet_track_dR = reco::deltaR(tracks_iter->eta(), tracks_iter->phi(), jets_iter->eta(), jets_iter->phi());
-              if (jet_track_dR < max_jet_track_dR) {
-                jet_ntracks++;
+            //Do not select already displaced tracks
+            reco::TransientTrack ttk = tt_builder.build(*tracks_iter);
+            std::pair<bool, Measurement1D> ttk_dist = IPTools::absoluteTransverseImpactParameter(ttk, fake_bs_vtx);
+            float IP_sig = ttk_dist.second.significance();
+            if (IP_sig < 4){
+              //Track quality requirements
+              float pt_min_cut = 1.0;
+              int  npixelHits_min_cut = 2;
+              int nstripHits_min_cut = 1;
+              int ntrackerLayers_min_cut = 5;
+              if ((tracks_iter->pt()>pt_min_cut) && (tracks_iter->hitPattern().numberOfValidPixelHits() > npixelHits_min_cut) && (tracks_iter->hitPattern().numberOfValidStripHits() > nstripHits_min_cut) && (tracks_iter->hitPattern().trackerLayersWithMeasurement() > ntrackerLayers_min_cut) && (fabs(tracks_iter->eta())<2.4)){
+                jet_track_dR = reco::deltaR(tracks_iter->eta(), tracks_iter->phi(), jets_iter->eta(), jets_iter->phi());
+                if (jet_track_dR < max_jet_track_dR) {
+                  jet_ntracks++;
+                }
               }
             }
           }
@@ -321,16 +327,22 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   move_vertex->at(1) = 0;
   move_vertex->at(2) = 0;
 
+  //create a reco::Vertex to check for close tracks with IPTools
+  reco::Vertex::Point p(move_vertex->at(0), move_vertex->at(1), move_vertex->at(2));
+  // negligible error -> significance dominated by the track's own uncertainty
+  reco::Vertex::Error e;
+  e(0,0) = 1e-10;
+  e(1,1) = 1e-10;
+  e(2,2) = 1e-10;
+  reco::Vertex move_vertex_vtx(p, e);
+
   if (pass_presel && nPV > 0) {
     for (int i : knuth_select(njets, presel_jets.size())) {
       selected_jets.emplace_back(presel_jets[i]);
       jets_used->emplace_back(presel_jets[i]);
     }
-  
 
     //Get the direction of the jets momentum to displace the tracks
-    
-    
     for (reco::PFJet jet : selected_jets)
       *flight_axis += TVector3(jet.px(), jet.py(), jet.pz());
     flight_axis->SetMag(1.);
@@ -352,17 +364,21 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
     //std::cout<<"Move x: "<<move.x()<<", move vertex x: "<<move_vertex->at(0)<<", PV x: "<<primary_vertices->at(0).x()<<std::endl;
   }
 
-
   //Copy input tracks that do not match selected jets
   //Move the matched tracks to the "move vertex"
-  int itk = 0;
   for (auto tracks_iter = tracksH->begin(); tracks_iter != tracksH->end(); ++tracks_iter) {
     bool to_move = false;
-    for (reco::PFJet jet : selected_jets){
-      jet_track_dR = reco::deltaR(tracks_iter->eta(), tracks_iter->phi(), jet.eta(), jet.phi());
-      if (jet_track_dR < max_jet_track_dR) {
-        to_move = true;
-        goto done_check_to_move;
+    //do not move already displaced tracks
+    reco::TransientTrack ttk = tt_builder.build(*tracks_iter);
+    std::pair<bool, Measurement1D> ttk_dist = IPTools::absoluteTransverseImpactParameter(ttk, fake_bs_vtx);
+    float IP_sig = ttk_dist.second.significance();
+    if (IP_sig < 4){
+      for (reco::PFJet jet : selected_jets){
+        jet_track_dR = reco::deltaR(tracks_iter->eta(), tracks_iter->phi(), jet.eta(), jet.phi());
+        if (jet_track_dR < max_jet_track_dR) {
+          to_move = true;
+          goto done_check_to_move;
+        }
       }
     }
     done_check_to_move:
@@ -380,6 +396,9 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
                                   tracks_iter->vz() + move.z());
       reco::Track new_tk(tracks_iter->chi2(), tracks_iter->ndof(), new_point, tracks_iter->momentum(), tracks_iter->charge(), tracks_iter->covariance(), tracks_iter->algo());
             
+      //Before tossing out tracks, save the "Gen TM" tracks collection to perform signal reweighting later
+      moved_tracks->push_back(new_tk);
+
       /* Not considering the track eff correction for now
       //Update probability to drop tracks based on the track reconstruction efficiency
       if(isMC){
@@ -426,12 +445,17 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
       reco::HitPattern* hp = const_cast<reco::HitPattern*>(&new_tk.hitPattern());  *hp = tracks_iter->hitPattern(); 
 
       output_tracks->push_back(new_tk);
-      moved_tracks->push_back(new_tk);
     }
     else {
       output_tracks->push_back(*tracks_iter);
+      //If the track, by coindicence, is close to the move vertex, also consider for the TM reweighting
+      reco::TransientTrack ttk = tt_builder.build(*tracks_iter);
+      std::pair<bool, Measurement1D> ttk_dist = IPTools::absoluteTransverseImpactParameter(ttk, move_vertex_vtx);
+      float IP_sig = ttk_dist.second.significance();
+      if (IP_sig < 5){
+        moved_tracks->push_back(*tracks_iter);
+      }
     }
-    itk++;
   }
 
   iEvent.emplace(outputTrackToken_, std::move(*output_tracks));

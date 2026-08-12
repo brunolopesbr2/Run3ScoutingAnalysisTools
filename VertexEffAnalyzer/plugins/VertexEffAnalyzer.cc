@@ -154,6 +154,7 @@ private:
   double moveVertex_y;
   double moveVertex_z;
   double moveVertex_dBV;
+  double moveVertex_dBV3D;
 
   std::vector<double> vertices_x;
   std::vector<double> vertices_y;
@@ -345,6 +346,7 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     moveVertex_z = moveVertexH->at(2);
 
     moveVertex_dBV = TMath::Sqrt(pow(moveVertex_x - fake_bs_vtx.x(), 2) + pow(moveVertex_y - fake_bs_vtx.y(), 2));
+    moveVertex_dBV3D = TMath::Sqrt(pow(moveVertex_x - fake_bs_vtx.x(), 2) + pow(moveVertex_y - fake_bs_vtx.y(), 2) + pow(moveVertex_z - fake_bs_vtx.z(), 2));
 
     //std::cout<<"Analyser sees move vertex x as: "<<moveVertex_x<<std::endl;
   }
@@ -354,6 +356,7 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     moveVertex_y = 0;
     moveVertex_z = 0;
     moveVertex_dBV = 0;
+    moveVertex_dBV3D = 0;
   }
 
   matchedVertex = false;
@@ -367,9 +370,6 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   nMatchedVertices = 0;
 
   reco::Vertex v;
-
-  LLP_dR = 0;
-  LLP_PtSum = 0;
 
   Measurement1D dBV_measurement;
   VertexDistanceXY vertex_dist_2d;
@@ -395,15 +395,6 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
           float p_tot[3] = {0.0, 0.0, 0.0};
           std::vector<reco::TrackRef> trks = vertex_track_vec(v);
-
-          LLP_PtSum = 0;
-          for (size_t i = 0; i < trks.size(); ++i) {
-            for (size_t j = i + 1; j < trks.size(); ++j) {
-                double tmp_dR = reco::deltaR(trks[i]->eta(), trks[i]->phi(), trks[j]->eta(), trks[j]->phi());
-                if (tmp_dR > LLP_dR) LLP_dR = tmp_dR;
-            }
-            LLP_PtSum = LLP_PtSum + trks[i]->pt();
-          }
 
           for(auto trk:trks){
             p_tot[0] += trk->px();
@@ -433,6 +424,7 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   iEvent.getByToken(movedTracksToken_, movedTracksH);
 
 
+  
   if(originalTracksH.isValid()){
     for (auto originalTracks_iter = originalTracksH->begin(); originalTracks_iter != originalTracksH->end(); ++originalTracks_iter) {
       originalTracks_pt.push_back(originalTracks_iter->pt());
@@ -453,6 +445,8 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     }
   }
 
+  LLP_PtSum = 0;
+  LLP_dR = 0;
   nMovedTracks = 0;
   if(movedTracksH.isValid()){
     for (auto movedTracks_iter = movedTracksH->begin(); movedTracks_iter != movedTracksH->end(); ++movedTracks_iter) {
@@ -462,7 +456,14 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
       movedTracks_dxy.push_back(movedTracks_iter->dxy());
       movedTracks_dz.push_back(movedTracks_iter->dz());
       nMovedTracks++;
-    }
+
+      for (auto movedTracks_iter2 = movedTracksH->begin(); movedTracks_iter2 != movedTracksH->end(); ++movedTracks_iter2) {
+          double tmp_dR = reco::deltaR(movedTracks_iter->eta(), movedTracks_iter->phi(), movedTracks_iter2->eta(), movedTracks_iter2->phi());
+          if (tmp_dR > LLP_dR) LLP_dR = tmp_dR;
+      }
+
+      LLP_PtSum = LLP_PtSum + movedTracks_iter->pt();
+      }
   }
 
   objectTree->Fill();
@@ -504,6 +505,7 @@ void VertexEffAnalyzer::beginJob() {
   objectTree->Branch("moveVertex_y", &moveVertex_y, "moveVertex_y/D");
   objectTree->Branch("moveVertex_z", &moveVertex_z, "moveVertex_z/D");
   objectTree->Branch("moveVertex_dBV", &moveVertex_dBV, "moveVertex_dBV/D");
+  objectTree->Branch("moveVertex_dBV3D", &moveVertex_dBV3D, "moveVertex_dBV3D/D");
 
   objectTree->Branch("primaryVertex_x", &primaryVertex_x, "primaryVertex_x/D");
   objectTree->Branch("primaryVertex_y", &primaryVertex_y, "primaryVertex_y/D");
