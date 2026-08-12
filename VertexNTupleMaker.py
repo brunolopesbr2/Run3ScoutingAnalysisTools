@@ -98,6 +98,13 @@ options.register('validation',
                  "Validation mode. Disables the event veto."
 )
 
+options.register('doTrackMoverTree',
+                 False,
+                 VarParsing.VarParsing.multiplicity.singleton,
+                 VarParsing.VarParsing.varType.bool,
+                 "Whether to fill the tmTree."
+)
+
 
 options.parseArguments()
 process.load("FWCore.MessageService.MessageLogger_cfi")
@@ -143,8 +150,10 @@ process.source = cms.Source("PoolSource",
         #'/store/user/brlopesd/StopStopbarTo2Dbar2D_M-400_ctau-0p1mm_100kEvts_v2/StopStopbarTo2Dbar2D_M-400_ctau-0p1mm_100kEvts_step4_miniAOD_v1/260106_122558/0000/MiniAOD_1.root'
         #Exotic Higgs sample
         #'/store/mc/RunIII2024Summer24MiniAOD/GluGluH-Hto2Sto4D_Par-ctauS-10-MH-125-MS-15_TuneCP5_13p6TeV_powheg-pythia8/MINIAODSIM/140X_mcRun3_2024_realistic_v26-v2/2550000/009d9b72-008a-4d88-bbb2-79f9a66778fd.root'
+        #'/store/mc/RunIII2024Summer24MiniAOD/GluGluH-Hto2Sto4D_Par-ctauS-10-MH-125-MS-55_TuneCP5_13p6TeV_powheg-pythia8/MINIAODSIM/140X_mcRun3_2024_realistic_v26-v2/110000/0353cb8b-d2e1-4b5e-9ffa-fdefd39b6c64.root'
         #StealthSUSY sample
         #'/store/user/brlopesd/StealthSHH_mStop-300_mSo-100_ctau-0p1mm100kEvts_v2/StealthSHH_mStop-300_mSo-100_ctau-0p1mm_step4-miniAOD_100kEvts_v4/251208_232301/0000/MiniAOD_1.root'
+        #'/store/user/brlopesd/StealthSYY_mStop-300_mSo-100_ctau-0p1mm100kEvts_v2/StealthSYY_mStop-300_mSo-100_ctau-0p1mm_step4-miniAOD_100kEvts_v4/251208_232326/0000/MiniAOD_100.root'
     )
 )
 
@@ -421,7 +430,8 @@ process.scoutingTree = cms.EDAnalyzer('ScoutingTreeMakerRun3',
                                       scoutingParticle = scoutingPFTag,
                                       weightMap = cms.InputTag("triggerFilter", "weightMap"),
                                       val = cms.bool(options.validation),
-                                      LLP_pdgId = cms.int32(9000006), #1000006 for stop, 9000006 for the exotic Higgs decay, 5000001 for StealthSUSY
+                                      doTrackMoverTree = cms.bool(options.doTrackMoverTree),
+                                      LLP_pdgId = cms.int32(9000006), #1000006 for stop, 9000006 for the exotic Higgs decay, 5000002 for StealthSUSY
                                       pt_min_cut = cms.double(pt_min_val),
                                       npixelHits_min_cut = cms.int32(npixelHits_min_val),
                                       nstripHits_min_cut = cms.int32(nstripHits_min_val),

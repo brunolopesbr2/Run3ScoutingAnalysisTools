@@ -222,6 +222,7 @@ private:
   const edm::EDGetTokenT<std::map<std::string, float>> weightsToken_;
 
   bool isValidation;
+  bool doTMTree;
   
   int LLP_pdgId;
   const double pt_min_cut;
@@ -234,7 +235,7 @@ private:
   std::vector<double> triggerDown;
   std::vector<double> triggerEdge;
 
-  TTree* tree;
+  TTree* tmTree;
   TTree* objectTree;
 
   int nPFJets;
@@ -472,9 +473,13 @@ private:
   float genHT;
   int nGenJets;
 
-  double scoutVert_sumPt;
-  double scoutVert_deltaR;
-  
+  //TrackMover stuff 
+  std::vector<double>* genVert_sumPt_TM;
+  std::vector<double>* genVert_deltaR_TM;
+  std::vector<double>* genVert_dBV2D_TM;
+  std::vector<double>* genVert_dBV3D_TM;
+  double genVert_dVV_TM;
+
   TH1F* h_match_gen_dxy = new TH1F("match_gen_dxy",";Gen particle d_{xy} [cm]; Gen particles / 0.01 cm", 100, 0, 1);
   TH1F* h_gen_dxy = new TH1F("gen_dxy",";Gen particle d_{xy} [cm]; Gen particles / 0.01 cm", 100, 0, 1);
   TH2F* h_match_vert_x_y = new TH2F("match_vert_x_y","Vertex Position; X Position [cm] / 0.02 cm; Y Position [cm] / 0.02 cm", 100, -1, 1, 100, -1, 1);
@@ -762,6 +767,7 @@ ScoutingTreeMakerRun3::ScoutingTreeMakerRun3(const edm::ParameterSet& iConfig):
   isMC(iConfig.existsAs<bool>("isMC") ? iConfig.getParameter<bool>("isMC") : false),
   weightsToken_(consumes<std::map<std::string, float>>(edm::InputTag("triggerFilter", "weightMap"))),
   isValidation(iConfig.getParameter<bool>("val")),
+  doTMTree(iConfig.getParameter<bool>("doTrackMoverTree")),
   LLP_pdgId(iConfig.getParameter<int>("LLP_pdgId")),
   pt_min_cut(iConfig.getParameter<double>("pt_min_cut")),
   npixelHits_min_cut(iConfig.getParameter<int>("npixelHits_min_cut")),
@@ -930,6 +936,11 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
   genJet_mass->clear();
   genJet_energy->clear();
   genJet_nConstituents->clear();
+
+  genVert_sumPt_TM->clear();
+  genVert_deltaR_TM->clear();
+  genVert_dBV2D_TM->clear();
+  genVert_dBV3D_TM->clear();
   
   eventId = iEvent.id().event();
   runNumber = iEvent.id().run();
@@ -1404,26 +1415,27 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
       
       edm::Ref<std::vector<reco::Track>> trackRef(ScoutingTrackHandle, i_tk);
       if(isScouting){
-	auto scoutTrack = (*ScoutingTrackRefHandle)[trackRef];
-	scoutTrack_nValidPixelHits->push_back(scoutTrack->tk_nValidPixelHits());
-	scoutTrack_nTrackerLayersWithMeasurement->push_back(scoutTrack->tk_nTrackerLayersWithMeasurement());
-	scoutTrack_nValidStripHits->push_back(scoutTrack->tk_nValidStripHits());
+        auto scoutTrack = (*ScoutingTrackRefHandle)[trackRef];
+        scoutTrack_nValidPixelHits->push_back(scoutTrack->tk_nValidPixelHits());
+        scoutTrack_nTrackerLayersWithMeasurement->push_back(scoutTrack->tk_nTrackerLayersWithMeasurement());
+        scoutTrack_nValidStripHits->push_back(scoutTrack->tk_nValidStripHits());
       }
       else{
-	scoutTrack_nValidPixelHits->push_back(scoutingTrackIter->hitPattern().numberOfValidPixelHits());
-	scoutTrack_nTrackerLayersWithMeasurement->push_back(scoutingTrackIter->hitPattern().trackerLayersWithMeasurement());
-	scoutTrack_nValidStripHits->push_back(scoutingTrackIter->hitPattern().numberOfValidStripHits());
+        scoutTrack_nValidPixelHits->push_back(scoutingTrackIter->hitPattern().numberOfValidPixelHits());
+        scoutTrack_nTrackerLayersWithMeasurement->push_back(scoutingTrackIter->hitPattern().trackerLayersWithMeasurement());
+        scoutTrack_nValidStripHits->push_back(scoutingTrackIter->hitPattern().numberOfValidStripHits());
       }
       //scoutTrack_nMissingInnerHits->push_back(scoutingTrackIter->missingInnerHits());
     
+      /*
       float minPVDxy = 999999;
       float minPVDz = 999999;
-      /*
+      
       for(primaryVertexIter = primaryVertices->begin(); primaryVertexIter != primaryVertices->end(); ++primaryVertexIter){
-	ttk_transverseDist = IPTools::absoluteTransverseImpactParameter(transientScoutTrack, *primaryVertexIter);
-	if(ttk_transverseDist.second.value()<minPVDxy) minPVDxy = ttk_transverseDist.second.value();
-	dz = scoutingTrackIter->dz(primaryVertexIter->position());
-	if(fabs(dz)<fabs(minPVDz)) minPVDz = dz;
+        ttk_transverseDist = IPTools::absoluteTransverseImpactParameter(transientScoutTrack, *primaryVertexIter);
+        if(ttk_transverseDist.second.value()<minPVDxy) minPVDxy = ttk_transverseDist.second.value();
+        dz = scoutingTrackIter->dz(primaryVertexIter->position());
+        if(fabs(dz)<fabs(minPVDz)) minPVDz = dz;
       }
       scoutTrack_minPVDxy->push_back(minPVDxy);
       scoutTrack_minPVDz->push_back(minPVDz);
@@ -1431,6 +1443,64 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
       i_tk++;
     }
   }
+
+  std::vector<reco::GenParticle>::const_iterator genParticleIter;
+  edm::Handle<std::vector<reco::GenParticle>> genParticle_handle;
+  std::vector<GlobalPoint> genVertices;
+  
+if(isMC && doTMTree){
+  std::vector<GlobalPoint> genVertices_TM;
+  iEvent.getByToken(GenParticleToken_,genParticle_handle);
+  //get the 2 GEN vertices
+  for(genParticleIter = genParticle_handle->begin(); genParticleIter != genParticle_handle->end(); ++genParticleIter){
+    // look for the LLP directly
+    if(abs(genParticleIter->pdgId()) != LLP_pdgId) continue;
+    if(genParticleIter->numberOfDaughters() < 2) continue;
+    if(!genParticleIter->daughter(0) || !genParticleIter->daughter(1)) continue;
+
+    // require explicitly the LLP decays to be quarks, filters spurirous R-hadron vertices
+    // except for the StealthSUSY case, where the LLP singlino decays to singlet + gravitino
+    if(LLP_pdgId == 5000002){
+      if(abs(genParticleIter->daughter(0)->pdgId()) != 21 && //StealthSYY: gluons
+          abs(genParticleIter->daughter(0)->pdgId()) != 5) continue; //StealthSHH: b-jets
+      if(abs(genParticleIter->daughter(1)->pdgId()) != 21 &&
+          abs(genParticleIter->daughter(1)->pdgId()) != 5) continue;
+    }
+    else{ //RPV SUSY and Exo Higgs: LLP decays to quarks
+      if(abs(genParticleIter->daughter(0)->pdgId()) < 1 || 
+        abs(genParticleIter->daughter(0)->pdgId()) > 6) continue;
+      if(abs(genParticleIter->daughter(1)->pdgId()) < 1 || 
+        abs(genParticleIter->daughter(1)->pdgId()) > 6) continue;
+    }
+
+    if( abs(genParticleIter->daughter(0)->eta()) > 2.4 || abs(genParticleIter->daughter(1)->eta()) > 2.4) continue;
+
+    // displaced vertex position comes from the daughter
+    GlobalPoint genVertex(genParticleIter->daughter(0)->vx(),
+                          genParticleIter->daughter(0)->vy(),
+                          genParticleIter->daughter(0)->vz());
+
+    genVertices_TM.push_back(genVertex);
+
+    genVert_sumPt_TM->push_back(genParticleIter->daughter(0)->pt() + genParticleIter->daughter(1)->pt());
+    genVert_deltaR_TM->push_back(reco::deltaR(genParticleIter->daughter(0)->eta(), genParticleIter->daughter(0)->phi(), genParticleIter->daughter(1)->eta(), genParticleIter->daughter(1)->phi()));
+
+    float dx_BV = genVertex.x() - fake_bs_vtx.x();
+    float dy_BV = genVertex.y() - fake_bs_vtx.y();
+    float dz_BV = genVertex.z() - fake_bs_vtx.z();
+    genVert_dBV2D_TM->push_back(sqrt(dx_BV*dx_BV + dy_BV*dy_BV));
+    genVert_dBV3D_TM->push_back(sqrt(dx_BV*dx_BV + dy_BV*dy_BV + dz_BV*dz_BV));
+  }
+
+  genVert_dVV_TM = 0;
+  if(genVertices_TM.size() == 2){
+    genVert_dVV_TM = sqrt( std::pow(genVertices_TM.at(0).x() - genVertices_TM.at(1).x(), 2) +
+                        std::pow(genVertices_TM.at(0).y() - genVertices_TM.at(1).y(), 2) + 
+                        std::pow(genVertices_TM.at(0).z() - genVertices_TM.at(1).z(), 2) );
+  }
+  tmTree->Fill();
+}
+
   
   //Get the vertices
   Handle<vector<Vertex> > verticesH;
@@ -1533,35 +1603,8 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
     }
   }
 
-  std::vector<reco::GenParticle>::const_iterator genParticleIter;
-  edm::Handle<std::vector<reco::GenParticle>> genParticle_handle;
-  std::vector<GlobalPoint> genVertices;
-  
  if(isMC && doGenMatching){
     iEvent.getByToken(GenParticleToken_,genParticle_handle);
-
-    /* //debugging printouts 
-    for(genParticleIter = genParticle_handle->begin(); genParticleIter != genParticle_handle->end(); ++genParticleIter){
-        if(abs(genParticleIter->pdgId()) == LLP_pdgId || 
-          abs(genParticleIter->pdgId()) == 25 ||  // Higgs
-          abs(genParticleIter->pdgId()) == 5000001 ||  // Stealth singlino
-          abs(genParticleIter->pdgId()) == 5000002 ||  // Stealth singlet
-          abs(genParticleIter->pdgId()) < 6) {    // quarks
-            std::cout << "pdgId: " << genParticleIter->pdgId()
-                      << " status: " << genParticleIter->status()
-                      << " nDaughters: " << genParticleIter->numberOfDaughters()
-                      << " nMothers: " << genParticleIter->numberOfMothers()
-                      << " vx: " << genParticleIter->vx()
-                      << " vy: " << genParticleIter->vy()
-                      << " vz: " << genParticleIter->vz();
-              if(genParticleIter->numberOfDaughters()>0)
-                  std::cout << " daughter0 pdgId: " << genParticleIter->daughter(0)->pdgId();
-              if(genParticleIter->numberOfDaughters()>1)
-                  std::cout << " daughter1 pdgId: " << genParticleIter->daughter(1)->pdgId();
-            std::cout << std::endl;
-        }
-    }
-    */
 
     float maxDist = 0;
     for(genParticleIter = genParticle_handle->begin(); genParticleIter != genParticle_handle->end(); ++genParticleIter){
@@ -1812,10 +1855,6 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
   Measurement1D dBV_measurement;
   Measurement1D dPVV_measurement;
   float dBV_t;
-  int scoutVert_nTk_tmp = 0;
-
-  scoutVert_deltaR = -1;
-  scoutVert_sumPt = -1;
   
   std::vector<std::vector<float>> deltaRVecVertices;
 
@@ -1863,24 +1902,6 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
     scoutVert_dT->push_back(d_T);
     scoutVert_cosT->push_back(cos_T);
     scoutVert_pMag->push_back(sqrt(pow(p_tot[0],2)+pow(p_tot[1],2)+pow(p_tot[2],2)));
-
-    //for the vertex with most tracks
-    if (vertex_track_vec(v).size() > static_cast<size_t>(scoutVert_nTk_tmp)) {
-      scoutVert_nTk_tmp = vertex_track_vec(v).size();
-      scoutVert_sumPt = 0;
-      for (size_t i = 0; i < trks.size(); ++i) {
-        for (size_t j = i + 1; j < trks.size(); ++j) {
-            double tmp_dR = reco::deltaR(trks[i]->eta(), trks[i]->phi(), trks[j]->eta(), trks[j]->phi());
-            if (tmp_dR > scoutVert_deltaR) scoutVert_deltaR = tmp_dR;
-        }
-        scoutVert_sumPt = scoutVert_sumPt + trks[i]->pt();
-      }
-
-      //std::cout<< "Found a new leading vertex! "
-      //         << "Pt sum = " << scoutVert_sumPt
-      //         << "delta R = " << scoutVert_deltaR
-      //         << std::endl;
-    }
     
     if(isMC && doGenMatching){
       int i_trk = -1;
@@ -2121,14 +2142,12 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
     }
   }
 
-  tree->Fill();
   objectTree->Fill();
 }
 
 //Fill the tree with the variables retrieved above
 void ScoutingTreeMakerRun3::beginJob() {
     edm::Service<TFileService> fs;
-    tree = fs->make<TTree>("tree"      , "tree");
     
     h_dxyErr_weighted_sum_barrel = fs->make<TH1D>("dxyErr_weighted_sum_barrel",";Track p_{T}; Weighted Sum",200,0,200);
     h_dszErr_weighted_sum_barrel = fs->make<TH1D>("dszErr_weighted_sum_barrel",";Track p_{T}; Weighted Sum",200,0,200);
@@ -2163,71 +2182,6 @@ void ScoutingTreeMakerRun3::beginJob() {
     h_weight_sum_disk_jetMatched = fs->make<TH1D>("weight_sum_disk_jetMatched",";Track p_{T}; Weight Sum",200,0,200);
     h_weight_sq_sum_disk_jetMatched = fs->make<TH1D>("weight_sq_sum_disk_jetMatched",";Track p_{T}; Weight Squared Sum",200,0,200);
      
-    //tree->Branch("nPFJets"             , &nPFJets                     , "nPFJets/F"     );
-
-    tree->Branch("ptjet1"              , &ptjet1                      , "ptjet1/F"      );
-    tree->Branch("ptjet2"              , &ptjet2                      , "ptjet2/F"      ); 
-    tree->Branch("ptjet3"              , &ptjet3                      , "ptjet3/F"      );
-    tree->Branch("ptjet4"              , &ptjet4                      , "ptjet4/F"      );    
-
-    tree->Branch("etajet1"             , &etajet1                     , "etajet1/F"     );
-    tree->Branch("etajet2"             , &etajet2                     , "etajet2/F"     );
-    tree->Branch("etajet3"             , &etajet3                     , "etajet3/F"     );
-    tree->Branch("etajet4"             , &etajet4                     , "etajet4/F"     );
-
-    tree->Branch("phijet1"             , &phijet1                     , "phijet1/F"     );
-    tree->Branch("phijet2"             , &phijet2                     , "phijet2/F"     );
-    tree->Branch("phijet3"             , &phijet3                     , "phijet3/F"     );
-    tree->Branch("phijet4"             , &phijet4                     , "phijet4/F"     );
-
-    //Add the missing distributions
-    tree->Branch("dBV_1"               , &dBV_1                       , "dBV_1/F"       );
-    tree->Branch("dBV_2"               , &dBV_2                       , "dBV_2/F"       );
-
-    tree->Branch("bs2derr_1"           , &bs2derr_1                   , "bs2derr_1/F"   );
-    tree->Branch("bs2derr_2"           , &bs2derr_2                   , "bs2derr_2/F"   );
-    
-    tree->Branch("ntk_1"               , &ntk_1                       , "ntk_1/I"       );
-    tree->Branch("ntk_2"               , &ntk_2                       , "ntk_2/I"       );
-
-    tree->Branch("nVertices"               , &nVertices                       , "nVertices/I"       );
-    
-    tree->Branch("HT"                  , &HT                          , "HT/F"          );
-    
-    tree->Branch("l1Result", "std::vector<bool>"             ,&l1Result_, 32000, 0  );
-
-    //the L1 results also in separeated branches  
-    tree->Branch("L1_HTT200er"           , &L1_HTT200er                   , "L1_HTT200er/O"  );
-    tree->Branch("L1_HTT255er"           , &L1_HTT255er                   , "L1_HTT255er/O"  );
-    tree->Branch("L1_HTT280er"           , &L1_HTT280er                   , "L1_HTT280er/O"  );
-    tree->Branch("L1_HTT320er"           , &L1_HTT320er                   , "L1_HTT320er/O"  );
-    tree->Branch("L1_HTT360er"           , &L1_HTT360er                   , "L1_HTT360er/O"  );
-    tree->Branch("L1_HTT400er"           , &L1_HTT400er                   , "L1_HTT400er/O"  );
-    tree->Branch("L1_HTT450er"           , &L1_HTT450er                   , "L1_HTT450er/O"  );
-    tree->Branch("L1_ETT2000"           , &L1_ETT2000                   , "L1_ETT2000/O"  );
-    tree->Branch("L1_SingleJet180"           , &L1_SingleJet180                   , "L1_SingleJet180/O"  );
-    tree->Branch("L1_SingleJet200"           , &L1_SingleJet200                   , "L1_SingleJet200/O"  );
-    tree->Branch("L1_DoubleJet30er2p5_Mass_Min250_dEta_Max1p5", &L1_DoubleJet30er2p5_Mass_Min250_dEta_Max1p5, "L1_DoubleJet30er2p5_Mass_Min250_dEta_Max1p5/O"  );
-    tree->Branch("L1_DoubleJet30er2p5_Mass_Min250_dEta_Max1p5", &L1_DoubleJet30er2p5_Mass_Min300_dEta_Max1p5, "L1_DoubleJet30er2p5_Mass_Min300_dEta_Max1p5/O"  );
-    tree->Branch("L1_DoubleJet30er2p5_Mass_Min250_dEta_Max1p5", &L1_DoubleJet30er2p5_Mass_Min330_dEta_Max1p5, "L1_DoubleJet30er2p5_Mass_Min330_dEta_Max1p5/O"  );
-    tree->Branch("L1_FinalResult"           , &L1_FinalResult                   , "L1_FinalResult/O"  );
-    
-    tree->Branch("genVert_x_1"              , &genVert_x_1                      , "genVert_x_1/F"      );
-    tree->Branch("genVert_y_1"              , &genVert_y_1                      , "genVert_y_1/F"      );
-    tree->Branch("genVert_z_1"              , &genVert_z_1                      , "genVert_z_1/F"      );
-    tree->Branch("genVert_dBV_1"              , &genVert_dBV_1                      , "genVert_dBV_1/F"      );
-    tree->Branch("genVert_3d_1"              , &genVert_3d_1                      , "genVert_3d_1/F"      );
-    tree->Branch("genVert_motherEta_1"       , &genVert_motherEta               , "genVert_motherEta_1/F"      );
-    tree->Branch("genVert_motherPhi_1"       , &genVert_motherPhi               , "genVert_motherPhi_1/F"      );
-    tree->Branch("genVert_motherPt_1"       , &genVert_motherPt               , "genVert_motherPt_1/F"      );
-    tree->Branch("genVert_motherDistTraveled_1"       , &genVert_motherDistTraveled               , "genVert_motherDistTraveled_1/F"      );
-    tree->Branch("genVert_dVV"              , &genVert_dVV_2                      , "genVert_dVV/F"      );
-    tree->Branch("genVert_dPhi"              , &genVert_dPhi_2                      , "genVert_dPhi/F"      );
-    tree->Branch("genScout_nMatches"              , &genScout_nMatches                      , "genScout_nMatches/I"      );
-    tree->Branch("genScoutVert_nMatches"              , &genScoutVert_nMatches                      , "genScoutVert_nMatches/I"      );
-    tree->Branch("genVert_nVertices", &genVert_nVertices, "genVert_nVertices/I");
-    tree->Branch("scoutVert_nVertices", &scoutVert_nVertices, "scoutVert_nVertices/I");
-    //tree->Branch("scoutVert_dPVV"           , &scoutVert_dPVV                        , "scoutVert_dPVV/F"      );
     
     scoutTrack_pt = new std::vector<float>;
     scoutTrack_eta = new std::vector<float>;
@@ -2358,6 +2312,22 @@ void ScoutingTreeMakerRun3::beginJob() {
     genJet_mass = new std::vector<float>;
     genJet_energy = new std::vector<float>;
     genJet_nConstituents = new std::vector<int>;
+
+    genVert_sumPt_TM = new std::vector<double>;
+    genVert_deltaR_TM = new std::vector<double>;
+    genVert_dBV2D_TM = new std::vector<double>;
+    genVert_dBV3D_TM = new std::vector<double>;
+
+
+    tmTree = fs->make<TTree>("tmTree"      , "tmTree");
+    tmTree->Branch("genVert_sumPt_TM", &genVert_sumPt_TM);
+    tmTree->Branch("genVert_deltaR_TM", &genVert_deltaR_TM);
+    tmTree->Branch("genVert_dBV2D_TM", &genVert_dBV2D_TM);
+    tmTree->Branch("genVert_dBV3D_TM", &genVert_dBV3D_TM);
+    tmTree->Branch("genVert_dVV_TM", &genVert_dVV_TM, "genVert_dVV_TM/D");
+    tmTree->Branch("weight", &weight, "weight/D");
+    tmTree->Branch("uncorrectedWeight", &uncorrectedWeight, "uncorrectedWeight/D");
+
     
     objectTree = fs->make<TTree>("objectTree","objectTree");
     //std::cout<<"objectTree directory beginJob "<<objectTree->GetDirectory()->GetPath()<<std::endl;
@@ -2468,9 +2438,6 @@ void ScoutingTreeMakerRun3::beginJob() {
     objectTree->Branch("scoutVert_cosT",&scoutVert_cosT);
     objectTree->Branch("scoutVert_pMag",&scoutVert_pMag);
 
-    objectTree->Branch("scoutVert_deltaR", &scoutVert_deltaR, "scoutVert_deltaR/D");
-    objectTree->Branch("scoutVert_sumPt", &scoutVert_sumPt, "scoutVert_sumPt/D");
-
     objectTree->Branch("weight", &weight, "weight/D");
     objectTree->Branch("uncorrectedWeight", &uncorrectedWeight, "uncorrectedWeight/D");
     objectTree->Branch("weight_PU_BCDEFGHI_nominal", &weight_PU_BCDEFGHI_nominal, "weight_PU_BCDEFGHI_nominal/D");
@@ -2550,6 +2517,21 @@ void ScoutingTreeMakerRun3::beginJob() {
     objectTree->Branch("weight_trigger_nominal", &weight_trigger_nominal, "weight_trigger_nominal/F");
     objectTree->Branch("weight_trigger_up", &weight_trigger_up, "weight_trigger_up/F");
     objectTree->Branch("weight_trigger_down", &weight_trigger_down, "weight_trigger_down/F");
+
+    //the L1 results also in separeated branches  
+    objectTree->Branch("L1_HTT200er"           , &L1_HTT200er                   , "L1_HTT200er/O"  );
+    objectTree->Branch("L1_HTT255er"           , &L1_HTT255er                   , "L1_HTT255er/O"  );
+    objectTree->Branch("L1_HTT280er"           , &L1_HTT280er                   , "L1_HTT280er/O"  );
+    objectTree->Branch("L1_HTT320er"           , &L1_HTT320er                   , "L1_HTT320er/O"  );
+    objectTree->Branch("L1_HTT360er"           , &L1_HTT360er                   , "L1_HTT360er/O"  );
+    objectTree->Branch("L1_HTT400er"           , &L1_HTT400er                   , "L1_HTT400er/O"  );
+    objectTree->Branch("L1_HTT450er"           , &L1_HTT450er                   , "L1_HTT450er/O"  );
+    objectTree->Branch("L1_ETT2000"           , &L1_ETT2000                   , "L1_ETT2000/O"  );
+    objectTree->Branch("L1_SingleJet180"           , &L1_SingleJet180                   , "L1_SingleJet180/O"  );
+    objectTree->Branch("L1_SingleJet200"           , &L1_SingleJet200                   , "L1_SingleJet200/O"  );
+    objectTree->Branch("L1_DoubleJet30er2p5_Mass_Min250_dEta_Max1p5", &L1_DoubleJet30er2p5_Mass_Min250_dEta_Max1p5, "L1_DoubleJet30er2p5_Mass_Min250_dEta_Max1p5/O"  );
+    objectTree->Branch("L1_DoubleJet30er2p5_Mass_Min250_dEta_Max1p5", &L1_DoubleJet30er2p5_Mass_Min300_dEta_Max1p5, "L1_DoubleJet30er2p5_Mass_Min300_dEta_Max1p5/O"  );
+    objectTree->Branch("L1_DoubleJet30er2p5_Mass_Min250_dEta_Max1p5", &L1_DoubleJet30er2p5_Mass_Min330_dEta_Max1p5, "L1_DoubleJet30er2p5_Mass_Min330_dEta_Max1p5/O"  );
     
     h_genWeights->GetXaxis()->SetBinLabel(1,"None");
     h_genWeights->GetXaxis()->SetBinLabel(2,"nJets");
@@ -2831,6 +2813,11 @@ void ScoutingTreeMakerRun3::endJob() {
   delete genJet_mass;
   delete genJet_energy;
   delete genJet_nConstituents;
+
+  delete genVert_sumPt_TM;
+  delete genVert_deltaR_TM;
+  delete genVert_dBV2D_TM;
+  delete genVert_dBV3D_TM;
 }
 
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
