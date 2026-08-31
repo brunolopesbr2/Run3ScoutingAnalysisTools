@@ -436,7 +436,11 @@ private:
   float offlineBeamspot_yErr;
   float offlineBeamspot_zErr;
 
-  float ht_corrected;
+  float hltHT;
+  float hltHTNeutral;
+  float hltHTCharged;
+  float hltHTProxy;
+
   float weight_trigger_nominal;
   float weight_trigger_up;
   float weight_trigger_down;
@@ -474,6 +478,8 @@ private:
   int nGenJets;
 
   //TrackMover stuff 
+  std::vector<double>* genVert_netPt_TM;
+  std::vector<double>* genVert_netP_TM;
   std::vector<double>* genVert_sumPt_TM;
   std::vector<double>* genVert_deltaR_TM;
   std::vector<double>* genVert_dBV2D_TM;
@@ -937,6 +943,8 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
   genJet_energy->clear();
   genJet_nConstituents->clear();
 
+  genVert_netPt_TM->clear();
+  genVert_netP_TM->clear();
   genVert_sumPt_TM->clear();
   genVert_deltaR_TM->clear();
   genVert_dBV2D_TM->clear();
@@ -1221,13 +1229,14 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
   float dPhi_jet_mu;
   float dR_jet_mu;
 
-  ht_corrected = 0;
+  hltHT = 0;
   int imuon = 0;
 
   bool matches_muon;
 
+  std::vector<reco::PFJet> selected_jets;
   for (auto jet: pfJetVector) {
-    if((jet.pt() > 30) && (abs(jet.eta()) < 2.4)){    
+    if((jet.pt() > 30) && (abs(jet.eta()) < 2.5)){    
       matches_muon = false;
       for (auto muon : selectedMuons) {
         dEta_jet_mu = jet.eta() - muon->eta();
@@ -1239,10 +1248,40 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
 
         imuon++;
       }
-      if(!matches_muon) 
-        ht_corrected = ht_corrected + jet.pt();
+      if(!matches_muon) {
+        selected_jets.push_back(jet);
+        hltHT = hltHT + jet.pt();
+      }
     }
   }
+
+  //charged and neutral components
+  hltHTCharged = 0;
+  hltHTNeutral = 0;
+  hltHTProxy = 0;
+  for (auto pfcands_iter = scoutingParticle_collection_handle->begin(); pfcands_iter != scoutingParticle_collection_handle->end(); ++pfcands_iter) {
+    bool matches_jet = false;
+    for(auto jet: selected_jets){
+      float cand_jet_dR = reco::deltaR(pfcands_iter->eta(), pfcands_iter->phi(), jet.eta(), jet.phi());
+      if(cand_jet_dR < 0.4){
+        matches_jet = true;
+        goto done_check_match;
+      }
+    }
+    done_check_match:
+
+    if(matches_jet){
+      if(abs(pfcands_iter->pdgId()) == 211 || abs(pfcands_iter->pdgId()) == 11 || abs(pfcands_iter->pdgId()) == 13){
+        hltHTCharged = hltHTCharged + pfcands_iter->pt();
+      }
+      else{
+        hltHTNeutral = hltHTNeutral + pfcands_iter->pt();
+      }
+    }
+  }
+
+  hltHTProxy = hltHTNeutral + ( 0.8 - 0.6*exp(-hltHT/300.0) ) * hltHTCharged;
+
 
   // end HT calculation
   // get trigger weights
@@ -1256,12 +1295,6 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
     weight_trigger_up = 1;
     weight_trigger_down = 1;
   }
-
-
-  //std::cout<<"ht: "<<ht_corrected<<std::endl;
-  //std::cout<<"weight_nominal: "<<weight_trigger_nominal<<std::endl;
-  //std::cout<<"weight_up: "<<weight_trigger_up<<std::endl;
-  //std::cout<<"weight_down: "<<weight_trigger_down<<std::endl;
 
   //Get the pat jets, only for MC
   Handle<vector<pat::Jet> > patjetsH;
@@ -1481,6 +1514,13 @@ if(isMC && doTMTree){
                           genParticleIter->daughter(0)->vz());
 
     genVertices_TM.push_back(genVertex);
+
+    double px = genParticleIter->daughter(0)->px() + genParticleIter->daughter(1)->px();
+    double py = genParticleIter->daughter(0)->py() + genParticleIter->daughter(1)->py();
+    double pz = genParticleIter->daughter(0)->pz() + genParticleIter->daughter(1)->pz();
+
+    genVert_netPt_TM->push_back(sqrt(px*px + py*py));
+    genVert_netP_TM->push_back(sqrt(px*px + py*py + pz*pz));
 
     genVert_sumPt_TM->push_back(genParticleIter->daughter(0)->pt() + genParticleIter->daughter(1)->pt());
     genVert_deltaR_TM->push_back(reco::deltaR(genParticleIter->daughter(0)->eta(), genParticleIter->daughter(0)->phi(), genParticleIter->daughter(1)->eta(), genParticleIter->daughter(1)->phi()));
@@ -2313,20 +2353,25 @@ void ScoutingTreeMakerRun3::beginJob() {
     genJet_energy = new std::vector<float>;
     genJet_nConstituents = new std::vector<int>;
 
+    genVert_netPt_TM = new std::vector<double>;
+    genVert_netP_TM = new std::vector<double>;
     genVert_sumPt_TM = new std::vector<double>;
     genVert_deltaR_TM = new std::vector<double>;
     genVert_dBV2D_TM = new std::vector<double>;
     genVert_dBV3D_TM = new std::vector<double>;
 
-
-    tmTree = fs->make<TTree>("tmTree"      , "tmTree");
-    tmTree->Branch("genVert_sumPt_TM", &genVert_sumPt_TM);
-    tmTree->Branch("genVert_deltaR_TM", &genVert_deltaR_TM);
-    tmTree->Branch("genVert_dBV2D_TM", &genVert_dBV2D_TM);
-    tmTree->Branch("genVert_dBV3D_TM", &genVert_dBV3D_TM);
-    tmTree->Branch("genVert_dVV_TM", &genVert_dVV_TM, "genVert_dVV_TM/D");
-    tmTree->Branch("weight", &weight, "weight/D");
-    tmTree->Branch("uncorrectedWeight", &uncorrectedWeight, "uncorrectedWeight/D");
+    if(doTMTree){
+      tmTree = fs->make<TTree>("tmTree"      , "tmTree");
+      tmTree->Branch("genVert_netPt_TM", &genVert_netPt_TM);
+      tmTree->Branch("genVert_netP_TM", &genVert_netP_TM);
+      tmTree->Branch("genVert_sumPt_TM", &genVert_sumPt_TM);
+      tmTree->Branch("genVert_deltaR_TM", &genVert_deltaR_TM);
+      tmTree->Branch("genVert_dBV2D_TM", &genVert_dBV2D_TM);
+      tmTree->Branch("genVert_dBV3D_TM", &genVert_dBV3D_TM);
+      tmTree->Branch("genVert_dVV_TM", &genVert_dVV_TM, "genVert_dVV_TM/D");
+      tmTree->Branch("weight", &weight, "weight/D");
+      tmTree->Branch("uncorrectedWeight", &uncorrectedWeight, "uncorrectedWeight/D");
+    }
 
     
     objectTree = fs->make<TTree>("objectTree","objectTree");
@@ -2513,7 +2558,12 @@ void ScoutingTreeMakerRun3::beginJob() {
 
     objectTree->Branch("l1HT", &l1HT, "l1HT/D");
 
-    objectTree->Branch("ht_corrected", &ht_corrected, "ht_corrected/F");
+    objectTree->Branch("hltHT", &hltHT, "hltHT/F");
+
+    objectTree->Branch("hltHTNeutral", &hltHTNeutral, "hltHTNeutral/F");
+    objectTree->Branch("hltHTCharged", &hltHTCharged, "hltHTCharged/F");
+    objectTree->Branch("hltHTProxy", &hltHTProxy, "hltHTProxy/F");
+
     objectTree->Branch("weight_trigger_nominal", &weight_trigger_nominal, "weight_trigger_nominal/F");
     objectTree->Branch("weight_trigger_up", &weight_trigger_up, "weight_trigger_up/F");
     objectTree->Branch("weight_trigger_down", &weight_trigger_down, "weight_trigger_down/F");
