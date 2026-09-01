@@ -31,10 +31,12 @@
 
 //From JMT framework
 #include "TVector3.h"
+#include "TLorentzVector.h"
 #include "CLHEP/Random/RandomEngine.h"
 #include "CLHEP/Random/RandExponential.h"
 #include "CLHEP/Random/RandGauss.h"
 #include "CLHEP/Random/RandBinomial.h"
+#include "CLHEP/Random/RandFlat.h"
 #include "DataFormats/Math/interface/deltaR.h"
 #include "DataFormats/TrackReco/interface/TrackFwd.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
@@ -120,6 +122,7 @@ private:
   const int min_jet_ntracks;
   const double max_jet_track_dR;
   const int njets;
+  const double rapidityBoost;
   const double tau;
   const double track_keep_prob;
   const double sig_theta;
@@ -171,6 +174,7 @@ TrackMover::TrackMover(const edm::ParameterSet& iConfig)
   min_jet_ntracks(iConfig.getParameter<int>("min_jet_ntracks")),
   max_jet_track_dR(iConfig.getParameter<double>("max_jet_track_dR")),
   njets(iConfig.getParameter<int>("njets")),
+  rapidityBoost(iConfig.getParameter<double>("rapidityBoost")),
   tau(iConfig.getParameter<double>("tau")),
   track_keep_prob(iConfig.getParameter<double>("track_keep_prob")),
   sig_theta(iConfig.getParameter<double>("sig_theta")),
@@ -245,6 +249,7 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   CLHEP::RandExponential rexp(rng_engine);
   CLHEP::RandGauss rgau(rng_engine);
   CLHEP::RandBinomial rint(rng_engine);
+  CLHEP::RandFlat rflat(rng_engine);
 
   Handle<std::vector<reco::PFJet> > pfjetsH;
   iEvent.getByToken(jets_token, pfjetsH);
@@ -337,10 +342,23 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   reco::Vertex move_vertex_vtx(p, e);
 
   if (pass_presel && nPV > 0) {
-    for (int i : knuth_select(njets, presel_jets.size())) {
-      selected_jets.emplace_back(presel_jets[i]);
-      jets_used->emplace_back(presel_jets[i]);
+    int seed_idx = knuth_select(1, presel_jets.size())[0];
+    selected_jets.emplace_back(presel_jets[seed_idx]);
+    jets_used->emplace_back(presel_jets[seed_idx]);
+
+    int partner_idx = -1;
+    double jetsMinDeltaR = 1e9;
+    for (int i = 0; i < (int)presel_jets.size(); ++i) {
+      if (i == seed_idx) continue;
+      double jetsDeltaR = reco::deltaR(presel_jets[seed_idx].eta(), presel_jets[seed_idx].phi(), presel_jets[i].eta(), presel_jets[i].phi());
+      if (jetsDeltaR < jetsMinDeltaR){
+        partner_idx = i;
+        jetsMinDeltaR = jetsDeltaR;
+      }
     }
+
+    selected_jets.emplace_back(presel_jets[partner_idx]);
+    jets_used->emplace_back(presel_jets[partner_idx]);
 
     //Get the direction of the jets momentum to displace the tracks
     for (reco::PFJet jet : selected_jets)
@@ -391,10 +409,27 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
       int ntrackerLayers_min_cut = 5;
       if ( !((tracks_iter->pt()>pt_min_cut) && (tracks_iter->hitPattern().numberOfValidPixelHits() > npixelHits_min_cut) && (tracks_iter->hitPattern().numberOfValidStripHits() > nstripHits_min_cut) && (tracks_iter->hitPattern().trackerLayersWithMeasurement() > ntrackerLayers_min_cut) && (fabs(tracks_iter->eta())<2.4)) ) continue;
 
+      //boosting the tracks
+      double y_max = rapidityBoost;
+      double y = rflat.fire(0, y_max);
+      double beta_mag = std::tanh(y); 
+
+      TVector3 boost_vec = *flight_axis * beta_mag;
+
+      double m_pi = 0.13957018; //charged pion mass
+      TVector3 p3(tracks_iter->px(), tracks_iter->py(), tracks_iter->pz());
+      double E = std::sqrt(p3.Mag2() + m_pi*m_pi);
+
+      TLorentzVector p4(p3, E);
+      p4.Boost(boost_vec);
+
+      reco::Track::Vector new_momentum(p4.Px(), p4.Py(), p4.Pz());
+
       reco::TrackBase::Point new_point(tracks_iter->vx() + move.x(),
                                   tracks_iter->vy() + move.y(),
                                   tracks_iter->vz() + move.z());
-      reco::Track new_tk(tracks_iter->chi2(), tracks_iter->ndof(), new_point, tracks_iter->momentum(), tracks_iter->charge(), tracks_iter->covariance(), tracks_iter->algo());
+
+      reco::Track new_tk(tracks_iter->chi2(), tracks_iter->ndof(), new_point, new_momentum, tracks_iter->charge(), tracks_iter->covariance(), tracks_iter->algo());
             
       //Before tossing out tracks, save the "Gen TM" tracks collection to perform signal reweighting later
       moved_tracks->push_back(new_tk);
@@ -449,12 +484,14 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
     else {
       output_tracks->push_back(*tracks_iter);
       //If the track, by coindicence, is close to the move vertex, also consider for the TM reweighting
+      /*
       reco::TransientTrack ttk = tt_builder.build(*tracks_iter);
       std::pair<bool, Measurement1D> ttk_dist = IPTools::absoluteTransverseImpactParameter(ttk, move_vertex_vtx);
       float IP_sig = ttk_dist.second.significance();
       if (IP_sig < 5){
         moved_tracks->push_back(*tracks_iter);
       }
+      */
     }
   }
 

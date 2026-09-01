@@ -57,6 +57,13 @@ options.register('validation',
                  "Validation mode. Disables the event veto."
 )
 
+options.register('debugTree',
+                 False,
+                 VarParsing.VarParsing.multiplicity.singleton,
+                 VarParsing.VarParsing.varType.bool,
+                 "Include extra track collections and PV information for debugging."
+)
+
 
 ## Trigger corrections to use
 options.register('TriggerCorrectionsNominal',
@@ -103,7 +110,7 @@ process.options = cms.untracked.PSet(
 process.MessageLogger.cerr.FwkSummary.reportEvery = 100
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(30000) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(100000) )
 PUCorrectionData = np.load(options.PUFile)
 
 TriggerCorrectionNominal = np.load(options.TriggerCorrectionsNominal)
@@ -129,11 +136,9 @@ process.source = cms.Source("PoolSource",
         #Run 382255 LS 79
         #'/store/data/Run2024F/ScoutingPFRun3/HLTSCOUT/v1/000/382/255/00000/ac42dc85-581c-438a-b536-3abbfe4eef90.root'
         #Era E Run 381544 LS 1096
-        '/store/data/Run2024E/ScoutingPFRun3/HLTSCOUT/v1/000/381/544/00000/410771c4-3829-4638-8b0a-5126be4cacc9.root'
-        #New lifetime stop sample
-        #'/StopStopbarTo2Dbar2D_M-400_ctau-0p1mm_100kEvts_v2/brlopesd-StopStopbarTo2Dbar2D_M-400_ctau-0p1mm_100kEvts_step4_miniAOD_v1-df1e99b50d14b85be33e7e4ab518ee3a/USER'
+        #'/store/data/Run2024E/ScoutingPFRun3/HLTSCOUT/v1/000/381/544/00000/410771c4-3829-4638-8b0a-5126be4cacc9.root'
         #offline test
-        #'file:testDataFile.root'
+        'file:testDataFile.root'
     )
 )
 
@@ -329,7 +334,8 @@ process.trackMover = cms.EDProducer('TrackMover',
                                     min_jet_ntracks = cms.int32(2),
                                     max_jet_track_dR = cms.double(0.4),
                                     njets = cms.int32(2),
-                                    tau = cms.double(1.0),
+                                    rapidityBoost = cms.double(1.0),
+                                    tau = cms.double(0.3),
                                     track_keep_prob = cms.double(1.),
                                     sig_theta = cms.double(0.2),
                                     sig_phi = cms.double(0.2),
@@ -390,9 +396,10 @@ process.vertexEffTree = cms.EDAnalyzer('VertexEffAnalyzer',
                                         n_presel_jets = cms.InputTag('trackMover', 'npreseljets'),
                                         moved_jets = cms.InputTag('trackMover', 'jetsUsed'),
                                         flight_axis = cms.InputTag('trackMover', 'flightAxis'),
-                                        matchVertexDistance = cms.double(0.01),
+                                        matchVertexDistance = cms.double(0.02),
                                         isMC = cms.bool(options.isMC),
-                                        weightMap = cms.InputTag("triggerFilter", "weightMap")
+                                        weightMap = cms.InputTag("triggerFilter", "weightMap"),
+                                        debugTree = cms.bool(options.debugTree)
                                       )
 
 

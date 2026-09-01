@@ -122,6 +122,8 @@ private:
   const edm::EDGetTokenT<std::map<std::string, float>> weightsToken_;
   const edm::ESGetToken<BeamSpotOnlineObjects, BeamSpotOnlineHLTObjectsRcd> bsOnlineToken_;
 
+  bool debugTree;
+
   //Auxiliary Variables
   TTree* objectTree;
   double vertexDist;
@@ -146,9 +148,9 @@ private:
   std::vector<double> movedTracks_dz;
 
   //vertex level
-  double primaryVertex_x;
-  double primaryVertex_y;
-  double primaryVertex_z;
+  std::vector<double> primaryVertex_x;
+  std::vector<double> primaryVertex_y;
+  std::vector<double> primaryVertex_z;
 
   double moveVertex_x;
   double moveVertex_y;
@@ -163,6 +165,8 @@ private:
 
   double LLP_dR;
   double LLP_PtSum;
+  double LLP_netPt;
+  double LLP_netP;
 
   //event level
   int nVertices;
@@ -234,7 +238,8 @@ VertexEffAnalyzer::VertexEffAnalyzer(const edm::ParameterSet& iConfig)
     matchVertexDistance(iConfig.getParameter<double>("matchVertexDistance")),
     isMC(iConfig.existsAs<bool>("isMC") ?  iConfig.getParameter<bool>  ("isMC") : false),
     weightsToken_(consumes<std::map<std::string, float>>(edm::InputTag("triggerFilter", "weightMap"))),
-    bsOnlineToken_(esConsumes<BeamSpotOnlineObjects, BeamSpotOnlineHLTObjectsRcd>())
+    bsOnlineToken_(esConsumes<BeamSpotOnlineObjects, BeamSpotOnlineHLTObjectsRcd>()),
+    debugTree(iConfig.existsAs<bool>("debugTree") ?  iConfig.getParameter<bool>  ("debugTree") : false)
     {}
 
 VertexEffAnalyzer::~VertexEffAnalyzer() {
@@ -275,6 +280,10 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   movedTracks_dxy.clear();
   movedTracks_dz.clear();
 
+  primaryVertex_x.clear();
+  primaryVertex_y.clear();
+  primaryVertex_z.clear();
+
   edm::Handle<int> nPreselJetsH;
   iEvent.getByToken(nPreselJetsToken_, nPreselJetsH);
 
@@ -293,9 +302,11 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
   if(nPreselJets < 2 || nPV < 1) return;
 
-  primaryVertex_x = primaryVerticesH->at(0).x();
-  primaryVertex_y = primaryVerticesH->at(0).y();
-  primaryVertex_z = primaryVerticesH->at(0).z();
+  for (auto pv_iter = primaryVerticesH->begin(); pv_iter != primaryVerticesH->end(); ++pv_iter) {
+    primaryVertex_x.push_back(pv_iter->x());
+    primaryVertex_y.push_back(pv_iter->y());
+    primaryVertex_z.push_back(pv_iter->z());
+  }
 
   //get online beamspot
   const auto& bs = iSetup.getData(bsOnlineToken_);
@@ -447,8 +458,13 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
   LLP_PtSum = 0;
   LLP_dR = 0;
+  LLP_netPt = 0;
+  LLP_netP = 0;
   nMovedTracks = 0;
   if(movedTracksH.isValid()){
+    double px = 0;
+    double py = 0;
+    double pz = 0;
     for (auto movedTracks_iter = movedTracksH->begin(); movedTracks_iter != movedTracksH->end(); ++movedTracks_iter) {
       movedTracks_pt.push_back(movedTracks_iter->pt());
       movedTracks_eta.push_back(movedTracks_iter->eta());
@@ -461,9 +477,14 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
           double tmp_dR = reco::deltaR(movedTracks_iter->eta(), movedTracks_iter->phi(), movedTracks_iter2->eta(), movedTracks_iter2->phi());
           if (tmp_dR > LLP_dR) LLP_dR = tmp_dR;
       }
+      px = px + movedTracks_iter->px();
+      py = py + movedTracks_iter->py();
+      pz = pz + movedTracks_iter->pz();
 
       LLP_PtSum = LLP_PtSum + movedTracks_iter->pt();
       }
+    LLP_netPt = sqrt(px*px + py*py);
+    LLP_netP = sqrt(px*px + py*py + pz*pz);
   }
 
   objectTree->Fill();
@@ -479,26 +500,7 @@ void VertexEffAnalyzer::beginJob() {
   objectTree->Branch("weight_noTrigger", &weight_noTrigger, "weight_noTrigger/D");
   objectTree->Branch("genWeight", &genWeight, "genWeight/D");
 
-  objectTree->Branch("originalTracks_pt",&originalTracks_pt);
-  objectTree->Branch("originalTracks_eta",&originalTracks_eta);
-  objectTree->Branch("originalTracks_phi",&originalTracks_phi);
-  objectTree->Branch("originalTracks_dxy",&originalTracks_dxy);
-  objectTree->Branch("originalTracks_dz",&originalTracks_dz);
-
-  objectTree->Branch("tracks_pt",&tracks_pt);
-  objectTree->Branch("tracks_eta",&tracks_eta);
-  objectTree->Branch("tracks_phi",&tracks_phi);
-  objectTree->Branch("tracks_dxy",&tracks_dxy);
-  objectTree->Branch("tracks_dz",&tracks_dz);
-
-  objectTree->Branch("movedTracks_pt",&movedTracks_pt);
-  objectTree->Branch("movedTracks_eta",&movedTracks_eta);
-  objectTree->Branch("movedTracks_phi",&movedTracks_phi);
-  objectTree->Branch("movedTracks_dxy",&movedTracks_dxy);
-  objectTree->Branch("movedTracks_dz",&movedTracks_dz);
-
   objectTree->Branch("nMovedTracks", &nMovedTracks, "nMovedTracks/I");
-
   objectTree->Branch("nPreselJets", &nPreselJets, "nPreselJets/I");
 
   objectTree->Branch("moveVertex_x", &moveVertex_x, "moveVertex_x/D");
@@ -507,14 +509,9 @@ void VertexEffAnalyzer::beginJob() {
   objectTree->Branch("moveVertex_dBV", &moveVertex_dBV, "moveVertex_dBV/D");
   objectTree->Branch("moveVertex_dBV3D", &moveVertex_dBV3D, "moveVertex_dBV3D/D");
 
-  objectTree->Branch("primaryVertex_x", &primaryVertex_x, "primaryVertex_x/D");
-  objectTree->Branch("primaryVertex_y", &primaryVertex_y, "primaryVertex_y/D");
-  objectTree->Branch("primaryVertex_z", &primaryVertex_z, "primaryVertex_z/D");
-
   objectTree->Branch("nPV", &nPV, "nPV/I");
   objectTree->Branch("nVertices", &nVertices, "nVertices/I");
 
-  objectTree->Branch("matchedVertex", &matchedVertex, "matchedVertex/O");
   objectTree->Branch("nMatchedVertices", &nMatchedVertices, "nMatchedVertices/I");
 
   objectTree->Branch("matchedVertex_nTracks", &matchedVert_nTracks, "matchedVert_nTracks/I");
@@ -525,6 +522,33 @@ void VertexEffAnalyzer::beginJob() {
 
   objectTree->Branch("LLP_dR", &LLP_dR, "LLP_dR/D");
   objectTree->Branch("LLP_PtSum", &LLP_PtSum, "LLP_PtSum/D");
+  objectTree->Branch("LLP_netP", &LLP_netP, "LLP_netP/D");
+  objectTree->Branch("LLP_netPt", &LLP_netPt, "LLP_netPt/D");
+
+  if(debugTree){
+    objectTree->Branch("tracks_pt",&tracks_pt);
+    objectTree->Branch("tracks_eta",&tracks_eta);
+    objectTree->Branch("tracks_phi",&tracks_phi);
+    objectTree->Branch("tracks_dxy",&tracks_dxy);
+    objectTree->Branch("tracks_dz",&tracks_dz);
+
+    objectTree->Branch("originalTracks_pt",&originalTracks_pt);
+    objectTree->Branch("originalTracks_eta",&originalTracks_eta);
+    objectTree->Branch("originalTracks_phi",&originalTracks_phi);
+    objectTree->Branch("originalTracks_dxy",&originalTracks_dxy);
+    objectTree->Branch("originalTracks_dz",&originalTracks_dz);
+
+    objectTree->Branch("movedTracks_pt",&movedTracks_pt);
+    objectTree->Branch("movedTracks_eta",&movedTracks_eta);
+    objectTree->Branch("movedTracks_phi",&movedTracks_phi);
+    objectTree->Branch("movedTracks_dxy",&movedTracks_dxy);
+    objectTree->Branch("movedTracks_dz",&movedTracks_dz);
+
+    objectTree->Branch("primaryVertex_x", &primaryVertex_x);
+    objectTree->Branch("primaryVertex_y", &primaryVertex_y);
+    objectTree->Branch("primaryVertex_z", &primaryVertex_z);
+  }
+
 }
 
 // ------------ method called once each job just after ending the event loop  ------------
