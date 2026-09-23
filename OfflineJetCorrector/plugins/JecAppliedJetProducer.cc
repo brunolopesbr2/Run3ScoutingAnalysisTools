@@ -47,7 +47,7 @@ private:
   bool        isDebug_{false};
 
   // --- Tokens
-  edm::EDGetTokenT<pat::JetCollection> jetsTok_;
+  edm::EDGetTokenT<reco::PFJetCollection> jetsTok_;
   edm::EDGetTokenT<double>             rhoTok_;
 
   // --- Config / correction backends
@@ -61,16 +61,17 @@ private:
   std::optional<correction::Correction::Ref> jesSystRef_;
 
   // Helpers
-  static double computeRawFactorFromMiniAOD(const pat::Jet& j) {
+  static double computeRawFactorFromMiniAOD(const reco::PFJet& j) {
     const double ptCorr = j.pt();
-    const double ptRaw  = j.correctedP4("Uncorrected").pt(); // MiniAOD stored
+    //const double ptRaw  = j.correctedP4("Uncorrected").pt(); // MiniAOD stored
+    const double ptRaw = j.pt(); //Scouting jets are raw -- rawFactor should be zero.
     if (ptCorr <= 0.0) return 0.0;
     const double rf = 1.0 - (ptRaw / ptCorr);
     // clamp to sane range
     return std::min(std::max(rf, 0.0), 1.0);
   }
 
-  static inline void setP4Scaled(pat::Jet& j, double scale) {
+  static inline void setP4Scaled(reco::PFJet& j, double scale) {
     // Scale full p4 (JEC/JER are p4 scalings)
     const auto p4 = j.p4();
     const auto p4Scaled = reco::Particle::LorentzVector(
@@ -78,7 +79,8 @@ private:
     j.setP4(p4Scaled);
   }
 
-  static inline void addUserFloats(pat::Jet& j,
+  /*
+  static inline void addUserFloats(reco::PFJet& j,
                                    double jes,
                                    double jesSyst,
                                    double jer,
@@ -88,6 +90,7 @@ private:
     j.addUserFloat("JERC:jerFactor",      jer);
     j.addUserFloat("JERC:totalFactor",    total);
   }
+    */
 };
 
 JecAppliedJetProducer::JecAppliedJetProducer(const edm::ParameterSet& iConfig)
@@ -101,7 +104,7 @@ JecAppliedJetProducer::JecAppliedJetProducer(const edm::ParameterSet& iConfig)
     jesSystVar_ ( jetsPset_.getParameter<std::string>("JesSystVar") ),
     jerVar_     ( jetsPset_.getParameter<std::string>("JerVar") ),
     isDebug_ ( iConfig.existsAs<bool>("isDebug") ? iConfig.getParameter<bool>("isDebug") : false ),
-    jetsTok_( consumes<pat::JetCollection>(srcJetsTag_) ),
+    jetsTok_( consumes<reco::PFJetCollection>(srcJetsTag_) ),
     rhoTok_ ( consumes<double>(rhoTag_) )
 {
   // Era (needed for data path)
@@ -163,20 +166,20 @@ JecAppliedJetProducer::JecAppliedJetProducer(const edm::ParameterSet& iConfig)
     useJerRegion_ = true;
   }
 
-  produces<pat::JetCollection>("CorrectedAK4");
+  produces<reco::PFJetCollection>("CorrectedAK4");
 }
 
 void JecAppliedJetProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
   // Inputs
-  edm::Handle<pat::JetCollection> hJets;
+  edm::Handle<reco::PFJetCollection> hJets;
   iEvent.getByToken(jetsTok_, hJets);
 
   edm::Handle<double> hRho;
   iEvent.getByToken(rhoTok_, hRho);
   const double rho = hRho.isValid() ? *hRho : 0.0;
 
-  auto out = std::make_unique<pat::JetCollection>();
+  auto out = std::make_unique<reco::PFJetCollection>();
   out->reserve(hJets->size());
 
   // Build systematics payload
@@ -207,7 +210,7 @@ void JecAppliedJetProducer::produce(edm::Event& iEvent, const edm::EventSetup& i
 
   // Loop jets
   for (const auto& jet : *hJets) {
-    pat::Jet outJet = jet; // copy
+    reco::PFJet outJet = jet; // copy
 
     // --- Build JES inputs from MiniAOD ---
     const double rawFactor = computeRawFactorFromMiniAOD(jet);
@@ -254,21 +257,22 @@ void JecAppliedJetProducer::produce(edm::Event& iEvent, const edm::EventSetup& i
       jerIn.event = iEvent.id().event();
       jerIn.rho   = rho;
 
-      if (const auto* gj = jet.genJet()) {
-        jerIn.hasGen = true;
-        jerIn.genPt  = gj->pt();
-        jerIn.genEta = gj->eta();
-        jerIn.genPhi = gj->phi();
-        jerIn.maxDr  = 0.2; // AK4
-      }
+      jerIn.hasGen = false;
+      //if (const auto* gj = jet.genJet()) {
+      //  jerIn.hasGen = true;
+      //  jerIn.genPt  = gj->pt();
+      //  jerIn.genEta = gj->eta();
+      //  jerIn.genPhi = gj->phi();
+      //  jerIn.maxDr  = 0.2; // AK4
+      //}
 
       jerFactor = applier.jerFactor(jAfter, jerIn, systOpts);
       setP4Scaled(outJet, jerFactor);
     }
 
     // Attach userFloats for downstream bookkeeping
-    const double total = jesFactor * jesSystFactor * jerFactor;
-    addUserFloats(outJet, jesFactor, jesSystFactor, jerFactor, total);
+    //const double total = jesFactor * jesSystFactor * jerFactor;
+    //addUserFloats(outJet, jesFactor, jesSystFactor, jerFactor, total);
 
     out->push_back(std::move(outJet));
   }

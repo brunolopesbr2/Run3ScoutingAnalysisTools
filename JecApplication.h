@@ -16,7 +16,7 @@ namespace JecApplication {
 
 // -------- Utilities (headers only) --------
 inline bool hasPhiDependentL2(const std::string& year) {
-    return (year == "2023Post" || year == "2024" || year == "2025");
+    return (year == "2023Post" || year == "2024" || year == "2024Scouting" || year == "2025");
 }
 inline bool requiresRunBasedResidual(const std::string& year) {
     return (
@@ -24,7 +24,8 @@ inline bool requiresRunBasedResidual(const std::string& year) {
             year == "2017" || year == "2018" ||
             year == "2022Pre" || year == "2022Post" ||
             year == "2023Pre" || year == "2023Post" || 
-            year == "2024" || year == "2025"
+            year == "2024" || year == "2024Scouting" ||
+            year == "2025"
            );
 }
 inline bool usesPuppiMet(const std::string& year) {
@@ -95,7 +96,7 @@ struct JerHandles {
     std::optional<correction::Correction::Ref> ptResolution; // MC only
     std::optional<correction::Correction::Ref> scaleFactor;  // MC only
     std::optional<correction::Correction::Ref> sfUncertainty; // MC only, new split JER SF uncertainty
-    correction::Correction::Ref smear;                       // always (json-based RNG)
+    std::optional<correction::Correction::Ref> smear;         // always (json-based RNG)
 };
 
 struct JecContext {

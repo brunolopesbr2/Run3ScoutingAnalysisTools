@@ -44,7 +44,7 @@ options.register('PUFile',
     )
 
 options.register('UncertaintyCorrectionFile',
-                 'ratio_uncertaintyCorrections_v28.npz',
+                 'ratio_uncertaintyCorrections_v33.npz',
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.string,
                  "Name of track uncertainty correction file to use"
@@ -77,18 +77,18 @@ options.register('TriggerCorrectionsBinEdge',
     )
 # ------
 
-options.register('doJEC',
+options.register('doJECOffline',
                  True,
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.bool,
-                 "If HLT jet corrections are applied"
+                 "If offline or online (GT) corrections are applied"
 )
 
-options.register('useLooseJets',
-                 False,
+options.register('doJECUnc',
+                 True,
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.bool,
-                 "Whether to select loose or tight jets on the EventSkim"
+                 "If JEC uncertainties are applied"
 )
 
 options.register('validation',
@@ -117,7 +117,7 @@ process.options = cms.untracked.PSet(
 process.MessageLogger.cerr.FwkSummary.reportEvery = 100
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000) )
 PUCorrectionData = np.load(options.PUFile)
 UncertaintyCorrectionData = np.load(options.UncertaintyCorrectionFile)
 
@@ -217,18 +217,20 @@ if(options.isScouting):
     lostTrackTag = cms.InputTag("")
 
     #skim
-    if(options.doJEC):
-        pfjetsTag = cms.InputTag("scoutingPFJetCorrected")
+    if(options.doJECOffline):
+        pfjetsTag = cms.InputTag("jecAppliedJetProducer", "CorrectedAK4")
+        if(options.doJECUnc):
+            pfjetsTagUp = cms.InputTag("jecAppliedJetProducerJECup", "CorrectedAK4")
+            pfjetsTagDown = cms.InputTag("jecAppliedJetProducerJECdown", "CorrectedAK4")
         patjetsTag = cms.InputTag("")
     else:
-        pfjetsTag = cms.InputTag("scoutingToRecoJets")
+        pfjetsTag = cms.InputTag("scoutingPFJetCorrected")
+        pfjetsTagUp = cms.InputTag("")
+        pfjetsTagDown = cms.InputTag("")
         patjetsTag = cms.InputTag("")
 
     #tree maker
-    if(options.useLooseJets):
-        skimPFJetsTag = cms.InputTag("triggerFilter","pfjetsLoose")
-    else:
-        skimPFJetsTag = cms.InputTag("triggerFilter","pfjets")
+    skimPFJetsTag = cms.InputTag("triggerFilter","pfjets")
     skimPatJetsTag = cms.InputTag("")
     pvTag = cms.InputTag("hltScoutingUnpackProducer","PrimaryVertex")
 else:
@@ -294,6 +296,61 @@ process.scoutingPFJetCorrected = cms.EDProducer("CorrectedPFJetProducer",
     src = cms.InputTag("scoutingToRecoJets"),
 )
 
+#Correction from JSON
+isDataBool = cms.bool(not options.isMC)
+if(options.isMC):
+    eraToJEC = cms.string("")
+else:
+    eraToJEC = cms.string("Era2024ScoutingAll")
+
+process.jecAppliedJetProducer = cms.EDProducer(
+    "JecAppliedJetProducer",
+    isDebug = cms.bool(False),  # set True to dump [JERC DEBUG] logs
+
+    Jets = cms.PSet(
+        srcAK4 = cms.InputTag("scoutingToRecoJets"),          # pat::JetCollection
+        rho    = cms.InputTag("hltScoutingPFPacker", "rho"),
+        Year   = cms.string("2024Scouting"),
+        IsData = isDataBool,
+
+        # Optional era ("" => None)
+        Era    = eraToJEC,
+
+        # --- Choose one of: "Nominal", "JES", "JER"
+        SystKind    = cms.string("Nominal"),
+
+        # If SystKind == "JES"
+        JesSystName = cms.string("AbsoluteStat"),  # correction set key
+        JesSystVar  = cms.string("Up"),            # "Up" | "Down"
+
+        # If SystKind == "JER"
+        JerVar      = cms.string("nom"),           # "nom" | "up" | "down"
+        JerRegion   = cms.PSet(                    # optional gate
+            etaMin = cms.double(0.0),
+            etaMax = cms.double(999.0),
+            ptMin  = cms.double(0.0),
+            ptMax  = cms.double(1.0e9),
+        ),
+        JecConfig = cms.FileInPath("Run3ScoutingAnalysisTools/OfflineJetCorrector/data/JecConfigAK4.json"),
+        JerToolConfig = cms.FileInPath("Run3ScoutingAnalysisTools/OfflineJetCorrector/data/jer_smear.json.gz"),
+    ),
+)
+if(options.doJECUnc and options.isMC):
+    process.jecAppliedJetProducerJECup = process.jecAppliedJetProducer.clone(
+        Jets = dict(
+            SystKind    = cms.string("JES"),
+            JesSystName = cms.string("CMS_scale_j_Total"),
+            JesSystVar  = cms.string("Up"),
+        )
+    )
+    process.jecAppliedJetProducerJECdown = process.jecAppliedJetProducer.clone(
+        Jets = dict(
+            SystKind    = cms.string("JES"),
+            JesSystName = cms.string("CMS_scale_j_Total"),
+            JesSystVar  = cms.string("Down"),
+        )
+    )
+
 process.hltScoutingUnpackProducer = cms.EDProducer('HLTScoutingUnpackProducer',
                                                    scoutingTrack = scoutingTrackTag,
                                                    scoutingPrimaryVertex = scoutingPVTag,
@@ -304,7 +361,7 @@ process.hltScoutingUnpackProducer = cms.EDProducer('HLTScoutingUnpackProducer',
                                                    producePFCHSCandidate = cms.bool(False),
                                                    mightGet = cms.optional.untracked.vstring,
                                                    isMC = cms.bool(options.isMC),
-                                                   doUncCorrection = cms.bool(False),
+                                                   doUncCorrection = cms.bool(True),
                                                    dxyErrCorrBarrel = cms.vdouble(*UncertaintyCorrectionData["ratio_correction_dxyErr_barrel_jetMatched"].tolist()),
                                                    dxyErrCorrDisk   = cms.vdouble(*UncertaintyCorrectionData["ratio_correction_dxyErr_disk_jetMatched"].tolist()),
                                                    dzErrCorrBarrel  = cms.vdouble(*UncertaintyCorrectionData["ratio_correction_dzErr_barrel_jetMatched"].tolist()),
@@ -316,6 +373,7 @@ process.hltScoutingUnpackProducer = cms.EDProducer('HLTScoutingUnpackProducer',
 
 process.triggerFilter = cms.EDFilter('TriggerFilter',
                                      isMC = cms.bool(options.isMC),
+                                     doJECUnc = cms.bool(options.doJECUnc),
                                      triggerresults   = cms.InputTag("TriggerResults", "", "HLT"),
                                      AlgInputTag       = cms.InputTag("gtStage2Digis"),
                                      l1tExtBlkInputTag = cms.InputTag("gtStage2Digis"),
@@ -328,6 +386,8 @@ process.triggerFilter = cms.EDFilter('TriggerFilter',
                                      L1HTThreshold = cms.double(0.0),
                                      l1Seeds           = cms.vstring(L1Info),
                                      pfjets            = pfjetsTag,
+                                     pfjetsUp          = pfjetsTagUp,
+                                     pfjetsDown        = pfjetsTagDown,
                                      patjets           = patjetsTag,
                                      generatorName = cms.InputTag('generator'),
                                      genJet_src = cms.InputTag('slimmedGenJets',''),
@@ -338,7 +398,6 @@ process.triggerFilter = cms.EDFilter('TriggerFilter',
                                      triggerUp = cms.vdouble(*TriggerCorrectionUp.flatten().tolist()),
                                      triggerDown = cms.vdouble(*TriggerCorrectionDown.flatten().tolist()),
                                      triggerEdge = cms.vdouble(*TriggerCorrectionBinEdge.flatten().tolist()),
-                                     useLooseJets = cms.bool(options.useLooseJets),
                                      val = cms.bool(options.validation)
                                      )
 pt_min_val = 1.0
@@ -389,6 +448,14 @@ process.Vertexer = cms.EDProducer('Vertexer',
                                   weightMap = cms.InputTag("triggerFilter", "weightMap")
                                   )
 
+if(options.isMC and options.doJECUnc):
+    process.VertexerJECup = process.Vertexer.clone(
+        pfjets = cms.InputTag("triggerFilter","pfjetsUp")
+    )
+    process.VertexerJECdown = process.Vertexer.clone(
+        pfjets = cms.InputTag("triggerFilter","pfjetsDown")
+    )
+
 process.scoutingTree = cms.EDAnalyzer('ScoutingTreeMakerRun3',
                                       isMC = cms.bool(options.isMC),
                                       L1et = cms.InputTag("gtStage2Digis", "EtSum"),
@@ -437,11 +504,53 @@ process.scoutingTree = cms.EDAnalyzer('ScoutingTreeMakerRun3',
                                       nstripHits_min_cut = cms.int32(nstripHits_min_val),
                                       ntrackerLayers_min_cut = cms.int32(ntrackerLayers_min_val)
                                       )
+
+if(options.isMC and options.doJECUnc):
+    process.scoutingTreeJECup = process.scoutingTree.clone(
+        pfjets = cms.InputTag("triggerFilter","pfjetsUp"),
+        vertexShiftZMap   = cms.InputTag("VertexerJECup","vtxZShift"),
+        vertexShift3DMap  = cms.InputTag("VertexerJECup","vtx3DShift"),
+        displacedVertices = cms.InputTag("VertexerJECup")
+    )
+    process.scoutingTreeJECdown = process.scoutingTree.clone(
+        pfjets = cms.InputTag("triggerFilter","pfjetsDown"),
+        vertexShiftZMap   = cms.InputTag("VertexerJECdown","vtxZShift"),
+        vertexShift3DMap  = cms.InputTag("VertexerJECdown","vtx3DShift"),
+        displacedVertices = cms.InputTag("VertexerJECdown")
+    )
+
 # Usually it is better to put producers on a task instead of a path
 # but paths also work.
-
-
-if(options.doJEC):
+if(options.doJECOffline):
+    if(options.isMC and options.doJECUnc):
+        process.p = cms.Path(
+            process.scoutingToRecoJets *
+            process.jecAppliedJetProducer *
+            process.jecAppliedJetProducerJECup *
+            process.jecAppliedJetProducerJECdown *
+            process.gtStage2Digis *
+            process.triggerFilter * 
+            process.hltScoutingUnpackProducer *
+            process.offlineBeamSpot *
+            process.Vertexer *
+            process.VertexerJECup *
+            process.VertexerJECdown *
+            process.scoutingTree *
+            process.scoutingTreeJECup *
+            process.scoutingTreeJECdown
+        )
+    else:
+        process.p = cms.Path(
+            process.scoutingToRecoJets *
+            process.jecAppliedJetProducer *
+            process.gtStage2Digis *
+            process.triggerFilter * 
+            process.hltScoutingUnpackProducer *
+            process.offlineBeamSpot *
+            process.Vertexer *
+            process.scoutingTree
+        )
+else:
     process.p = cms.Path(
         process.scoutingToRecoJets *
         process.hltAK4PFFastJetCorrector *
@@ -457,14 +566,3 @@ if(options.doJEC):
         process.Vertexer *
         process.scoutingTree
     )
-else:
-    process.p = cms.Path(
-        process.scoutingToRecoJets *
-        process.hltScoutingUnpackProducer *
-        process.gtStage2Digis *
-        process.triggerFilter *
-        process.offlineBeamSpot *
-        process.Vertexer *
-        process.scoutingTree
-    )
-

@@ -48,7 +48,14 @@ JecContext Applier::makeContextMc(JecConfigReader::JecConfig& cfg,
     ctx.isData = false;
     ctx.isDebug = debug;
     ctx.jes = JesHandles{ jes.l1FastJet, jes.l2Relative, std::nullopt };
-    ctx.jer = JerHandles{ jer.ptResolution, jer.scaleFactor, jer.sfUncertainty, cfg.getJerSmearRef() };
+
+    if (jer.ptResolution && jer.scaleFactor) {
+        ctx.jer = JerHandles{ jer.ptResolution, jer.scaleFactor, jer.sfUncertainty,
+                             cfg.getJerSmearRef() };
+    } else {
+        ctx.jer = JerHandles{ std::nullopt, std::nullopt, std::nullopt, std::nullopt };
+    }
+
     return ctx;
 }
 
@@ -83,7 +90,7 @@ double Applier::jesFactorNominal(const JesInputs& j) const {
 
     // L1FastJet
     double ptAfter = ptRaw;
-    const double c1 = ctx_.jes.l1FastJet->evaluate({ j.area, j.eta, ptAfter, j.rho });
+    const double c1 = ctx_.jes.l1FastJet->evaluate({ j.area, j.eta, j.phi, ptAfter, j.rho });
     ptAfter *= c1;
     dbg(ctx_.isDebug, "JES L1FastJet: c1=" + std::to_string(c1) +
                       ", ptAfter=" + std::to_string(ptAfter));
@@ -210,7 +217,7 @@ double Applier::jerFactor(const JesInputs& jAfterJes,
     vals.emplace_back(static_cast<double>(reso));           // JER
     vals.emplace_back(static_cast<double>(sf));             // JERSF
 
-    const double smear = ctx_.jer.smear->evaluate(vals);
+    const double smear = (*ctx_.jer.smear)->evaluate(vals);
     const double corr = (std::isfinite(smear) && smear > 0.0) ? smear : 1.0;
 
     dbg(ctx_.isDebug, std::string("JER via correctionlib: ")
