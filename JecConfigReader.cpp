@@ -255,11 +255,17 @@ JerMcRefs JecConfig::getJerNominalMcRefs(const std::string& year, JetKind kind) 
     const auto sf   = requireString(jer, "tagNameJerScaleFactor");
     const auto sfUnc = optionalString(jer, "tagNameJerSFUncertainty");
 
+    JerMcRefs r;
+
+    if (reso.empty() || sf.empty()) {
+    // No JER for this year/collection (e.g. 2024Scouting): leave
+    // r.ptResolution / r.scaleFactor as default-constructed (null) Refs.
+    return r;
+    }
+
     const auto jercPath = requireString(y, "jercJsonPath");
-    //std::cout<<jercPath<<std::endl;
     auto cs = loadCsCached(jercPath);
 
-    JerMcRefs r;
     r.cs           = cs;
     r.ptResolution = safeAt(cs, reso);
     r.scaleFactor  = safeAt(cs, sf);
