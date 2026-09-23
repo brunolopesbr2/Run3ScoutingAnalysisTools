@@ -1917,10 +1917,10 @@ if(isMC && doTMTree){
     std::vector<TrackRef> trks = vertex_track_vec(v);
     //std::cout<<"vertex number of tracks: "<<trks.size()<<std::endl;
     float p_tot[3] = {0.0, 0.0, 0.0};
-    for(auto trk:trks){
-      p_tot[0] += trk->px();
-      p_tot[1] += trk->py();
-      p_tot[2] += trk->pz();
+    for(auto trk:v.refittedTracks()){
+      p_tot[0] += trk.px();
+      p_tot[1] += trk.py();
+      p_tot[2] += trk.pz();
     }
     float cos_T = ( p_tot[0]*(v.x()-beamspot->x0())+p_tot[1]*(v.y()-beamspot->y0())) / (sqrt(pow(p_tot[0],2)+pow(p_tot[1],2))*sqrt(pow(v.x()-beamspot->x0(),2)+pow(v.y()-beamspot->y0(),2)) );
     float phi = atan2(p_tot[1],p_tot[0]);

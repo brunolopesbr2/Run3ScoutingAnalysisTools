@@ -173,12 +173,11 @@ private:
 
   VertexDistanceXY vertex_dist_2d;
   VertexDistance3D vertex_dist_3d;
-
-  KalmanVertexFitter kv_reco;
+  std::unique_ptr<KalmanVertexFitter> kv_reco;
   std::vector<TransientVertex> kv_reco_dropin(std::vector<reco::TransientTrack> & ttks) {
     if (ttks.size() < 2)
       return std::vector<TransientVertex>();
-    std::vector<TransientVertex> v(1, kv_reco.vertex(ttks));
+    std::vector<TransientVertex> v(1, kv_reco->vertex(ttks));
     if (v[0].normalisedChiSquared() > 5)
       return std::vector<TransientVertex>();
     return v;
@@ -306,7 +305,8 @@ K0Vertexer::K0Vertexer(edm::ParameterSet const& params)
   pfjetsToken_(consumes<std::vector<reco::PFJet>>(params.getParameter<edm::InputTag>("pfjets"))),
   token_builder(esConsumes(edm::ESInputTag("", "TransientTrackBuilder"))),
   weightsToken_(consumes<std::map<std::string, float>>(edm::InputTag("K0Filter", "weightMap"))),
-  putToken_{produces()} {
+  putToken_{produces()},
+  kv_reco(new KalmanVertexFitter(true)) {
 }
 
 
@@ -490,25 +490,23 @@ void K0Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   const size_t ntk = seed_tracks.size();
   std::unique_ptr<reco::VertexCollection> vertices(new reco::VertexCollection);
   std::vector<size_t> itks(n_tracks_per_seed_vertex, 0);
-  std::vector<float> vtxMasses;
   
   auto try_seed_vertex = [&]() {
     std::vector<reco::TransientTrack> ttks(n_tracks_per_seed_vertex);
     for (int i = 0; i < n_tracks_per_seed_vertex; ++i)
       ttks[i] = seed_tracks[itks[i]];
 
-    TransientVertex seed_vertex = kv_reco.vertex(ttks);
+    TransientVertex seed_vertex = kv_reco->vertex(ttks);
     if (seed_vertex.isValid() && seed_vertex.normalisedChiSquared() < max_seed_vertex_chi2) {
       reco::Vertex vertex = reco::Vertex(seed_vertex);
       track_set tracks = vertex_track_set(vertex);
       TLorentzVector vtx_p4(0.,0.,0.,0.);
       int netCharge = 0;
-      for(auto trk: tracks){
-	//const reco::Track& trkRefit = vertex.refittedTrack(trk);
+      for(auto trkRefit: vertex.refittedTracks()){
 	TLorentzVector trk_p4;
-	trk_p4.SetPtEtaPhiM(trk->pt(), trk->eta(), trk->phi(), 0.13957); //pion mass in GeV
+	trk_p4.SetPtEtaPhiM(trkRefit.pt(), trkRefit.eta(), trkRefit.phi(), 0.13957); //pion mass in GeV
 	vtx_p4 += trk_p4;
-	netCharge += trk->charge();
+	netCharge += trkRefit.charge();
       }
       float vtxMass = vtx_p4.M();
       const TVector3 vp42(vtx_p4.X(), vtx_p4.Y(), 0);
@@ -517,7 +515,6 @@ void K0Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
       //std::cout<<"vertex params: costh2 "<<costh2<<" vtxMass "<<vtxMass<<std::endl;
       if((costh2>=0.9) && (vtxMass>=0.3) && (vtxMass<=0.7) && (netCharge==0)){
 	vertices->push_back(vertex);
-	vtxMasses.push_back(vtxMass);
 	if (verbose) {
 	  const reco::Vertex& v = vertices->back();
 	  const double vchi2 = v.normalizedChi2();
@@ -648,10 +645,21 @@ void K0Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
       vertices->erase(v[1]);
     }
     else if (shareTrack) {
-      float mass1 = vtxMasses.at(ivtx[0]);
-      float mass2 = vtxMasses.at(ivtx[1]);
+
+      auto vmass = [&](const reco::Vertex& v){
+	TLorentzVector p4;
+	for (auto tk : v.refittedTracks()) {
+	  TLorentzVector t; t.SetPtEtaPhiM(tk.pt(), tk.eta(), tk.phi(), 0.13957);
+	  p4 += t;
+	}
+	return p4.M();
+      };
+      
+      float mass1 = vmass(*v[0]);
+      float mass2 = vmass(*v[1]);
       float massDiff1 = abs(mass1-k0Mass);
       float massDiff2 = abs(mass2-k0Mass);
+      //std::cout<<"mass1: "<<mass1<<" mass2: "<<mass2<<std::endl;
       if(massDiff1<massDiff2){
 	vertices->erase(v[1]);
       }

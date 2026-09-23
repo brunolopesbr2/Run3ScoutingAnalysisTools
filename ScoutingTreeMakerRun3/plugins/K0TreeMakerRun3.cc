@@ -1637,13 +1637,13 @@ void K0TreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSetup& i
     //std::cout<<"vertex number of tracks: "<<trks.size()<<std::endl;
     float p_tot[3] = {0.0, 0.0, 0.0};
     TLorentzVector vtx_p4(0.,0.,0.,0.);
-    for(auto trk:trks){
+    for(auto trk:v.refittedTracks()){
       TLorentzVector trk_p4;
-      trk_p4.SetPtEtaPhiM(trk->pt(), trk->eta(), trk->phi(), 0.13957); //pion mass in GeV
+      trk_p4.SetPtEtaPhiM(trk.pt(), trk.eta(), trk.phi(), 0.13957); //pion mass in GeV
       vtx_p4 += trk_p4;
-      p_tot[0] += trk->px();
-      p_tot[1] += trk->py();
-      p_tot[2] += trk->pz();
+      p_tot[0] += trk.px();
+      p_tot[1] += trk.py();
+      p_tot[2] += trk.pz();
     }
     float cos_T = ( p_tot[0]*(v.x()-beamspot->x0())+p_tot[1]*(v.y()-beamspot->y0())) / (sqrt(pow(p_tot[0],2)+pow(p_tot[1],2))*sqrt(pow(v.x()-beamspot->x0(),2)+pow(v.y()-beamspot->y0(),2)) );
     float phi = atan2(p_tot[1],p_tot[0]);
