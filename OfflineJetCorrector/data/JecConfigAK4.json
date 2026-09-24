@@ -1062,7 +1062,7 @@
     }
   },
 "2024Scouting": {
-  "jercJsonPath": "OfflineJetCorrector/data/jetScouting_jerc.json.gz",
+  "jercJsonPath": "jetScouting_jerc.json.gz",
   "ApplyOnData": {
     "JesNominal": {
       "Era2024ScoutingAll": {
