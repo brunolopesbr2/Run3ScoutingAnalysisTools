@@ -222,6 +222,9 @@ if(options.isScouting):
         if(options.doJECUnc):
             pfjetsTagUp = cms.InputTag("jecAppliedJetProducerJECup", "CorrectedAK4")
             pfjetsTagDown = cms.InputTag("jecAppliedJetProducerJECdown", "CorrectedAK4")
+        else:
+            pfjetsTagUp = cms.InputTag("")
+            pfjetsTagDown = cms.InputTag("")
         patjetsTag = cms.InputTag("")
     else:
         pfjetsTag = cms.InputTag("scoutingPFJetCorrected")
