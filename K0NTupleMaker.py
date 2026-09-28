@@ -44,7 +44,7 @@ options.register('PUFile',
     )
 
 options.register('UncertaintyCorrectionFile',
-                 '/afs/cern.ch/user/r/rmccarth/private/scouting/CMSSW_14_0_18_patch1/src/Run3ScoutingAnalysisTools/ratio_uncertaintyCorrections_v28.npz',
+                 '/afs/cern.ch/user/r/rmccarth/private/scouting/CMSSW_14_0_18_patch1/src/Run3ScoutingAnalysisTools/ratio_uncertaintyCorrections_v33.npz',
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.string,
                  "Name of track uncertainty correction file to use"
@@ -77,11 +77,18 @@ options.register('TriggerCorrectionsBinEdge',
     )
 # ------
 
-options.register('doJEC',
+options.register('doJECOffline',
                  True,
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.bool,
-                 "If HLT jet corrections are applied"
+                 "If offline or online (GT) corrections are applied"
+)
+
+options.register('doJECUnc',
+                 True,
+                 VarParsing.VarParsing.multiplicity.singleton,
+                 VarParsing.VarParsing.varType.bool,
+                 "If JEC uncertainties are applied"
 )
 
 options.parseArguments()
@@ -90,10 +97,10 @@ process.options = cms.untracked.PSet(
     wantSummary = cms.untracked.bool(True)
 )
 
-process.SimpleMemoryCheck = cms.Service("SimpleMemoryCheck",
-    ignoreTotal = cms.untracked.int32(1),
-    moduleMemorySummary = cms.untracked.bool(True)
-)
+#process.SimpleMemoryCheck = cms.Service("SimpleMemoryCheck",
+#    ignoreTotal = cms.untracked.int32(1),
+#    moduleMemorySummary = cms.untracked.bool(True)
+#)
 
 #process.options.numberOfThreads=cms.untracked.uint32(2)
 #process.options.numberOfStreams=cms.untracked.uint32(0)
@@ -133,6 +140,8 @@ process.source = cms.Source("PoolSource",
         #'/store/mc/RunIII2024Summer24MiniAOD/WZ_TuneCP5_13p6TeV_pythia8/MINIAODSIM/140X_mcRun3_2024_realistic_v26-v2/120000/00335771-92ea-4a26-91a8-47e3dae85d23.root'
         #Muon enriched QCD
         #'/store/mc/RunIII2024Summer24MiniAOD/QCD_Bin-PT-1000_Fil-MuEnriched_TuneCP5_13p6TeV_pythia8/MINIAODSIM/140X_mcRun3_2024_realistic_v26-v2/120000/00650e5a-9ffe-454d-a331-9211ea82329f.root'
+        #Leptonic ttbar
+        #'/store/mc/RunIII2024Summer24MiniAOD/TTto2L2Nu_TuneCP5_13p6TeV_powheg-pythia8/MINIAODSIM/140X_mcRun3_2024_realistic_v26-v2/100000/0082a563-9f76-4f81-b008-8ea004783479.root'
     )
 )
 
@@ -196,11 +205,19 @@ if(options.isScouting):
     lostTrackTag = cms.InputTag("")
 
     #skim
-    if(options.doJEC):
-        pfjetsTag = cms.InputTag("scoutingPFJetCorrected")
+    if(options.doJECOffline):
+        pfjetsTag = cms.InputTag("jecAppliedJetProducer", "CorrectedAK4")
+        if(options.doJECUnc):
+            pfjetsTagUp = cms.InputTag("jecAppliedJetProducerJECup", "CorrectedAK4")
+            pfjetsTagDown = cms.InputTag("jecAppliedJetProducerJECdown", "CorrectedAK4")
+        else:
+            pfjetsTagUp = cms.InputTag("")
+            pfjetsTagDown = cms.InputTag("")
         patjetsTag = cms.InputTag("")
     else:
-        pfjetsTag = cms.InputTag("scoutingToRecoJets")
+        pfjetsTag = cms.InputTag("scoutingPFJetCorrected")
+        pfjetsTagUp = cms.InputTag("")
+        pfjetsTagDown = cms.InputTag("")
         patjetsTag = cms.InputTag("")
 
     #tree maker
@@ -270,6 +287,61 @@ process.scoutingPFJetCorrected = cms.EDProducer("CorrectedPFJetProducer",
     src = cms.InputTag("scoutingToRecoJets"),
 )
 
+#Correction from JSON
+isDataBool = cms.bool(not options.isMC)
+if(options.isMC):
+    eraToJEC = cms.string("")
+else:
+    eraToJEC = cms.string("Era2024ScoutingAll")
+
+process.jecAppliedJetProducer = cms.EDProducer(
+    "JecAppliedJetProducer",
+    isDebug = cms.bool(False),  # set True to dump [JERC DEBUG] logs
+
+    Jets = cms.PSet(
+        srcAK4 = cms.InputTag("scoutingToRecoJets"),          # pat::JetCollection
+        rho    = cms.InputTag("hltScoutingPFPacker", "rho"),
+        Year   = cms.string("2024Scouting"),
+        IsData = isDataBool,
+
+        # Optional era ("" => None)
+        Era    = eraToJEC,
+
+        # --- Choose one of: "Nominal", "JES", "JER"
+        SystKind    = cms.string("Nominal"),
+
+        # If SystKind == "JES"
+        JesSystName = cms.string("AbsoluteStat"),  # correction set key
+        JesSystVar  = cms.string("Up"),            # "Up" | "Down"
+
+        # If SystKind == "JER"
+        JerVar      = cms.string("nom"),           # "nom" | "up" | "down"
+        JerRegion   = cms.PSet(                    # optional gate
+            etaMin = cms.double(0.0),
+            etaMax = cms.double(999.0),
+            ptMin  = cms.double(0.0),
+            ptMax  = cms.double(1.0e9),
+        ),
+        JecConfig = cms.FileInPath("Run3ScoutingAnalysisTools/OfflineJetCorrector/data/JecConfigAK4.json"),
+        JerToolConfig = cms.FileInPath("Run3ScoutingAnalysisTools/OfflineJetCorrector/data/jer_smear.json.gz"),
+    ),
+)
+if(options.doJECUnc and options.isMC):
+    process.jecAppliedJetProducerJECup = process.jecAppliedJetProducer.clone(
+        Jets = dict(
+            SystKind    = cms.string("JES"),
+            JesSystName = cms.string("CMS_scale_j_Total"),
+            JesSystVar  = cms.string("Up"),
+        )
+    )
+    process.jecAppliedJetProducerJECdown = process.jecAppliedJetProducer.clone(
+        Jets = dict(
+            SystKind    = cms.string("JES"),
+            JesSystName = cms.string("CMS_scale_j_Total"),
+            JesSystVar  = cms.string("Down"),
+        )
+    )
+
 
 process.hltScoutingUnpackProducer = cms.EDProducer('HLTScoutingUnpackProducer',
                                                    scoutingTrack = scoutingTrackTag,
@@ -293,6 +365,7 @@ process.hltScoutingUnpackProducer = cms.EDProducer('HLTScoutingUnpackProducer',
 
 process.K0Filter = cms.EDFilter('K0Filter',
                                      isMC = cms.bool(options.isMC),
+                                     doJECUnc = cms.bool(options.doJECUnc),
                                      triggerresults   = cms.InputTag("TriggerResults", "", "HLT"),
                                      AlgInputTag       = cms.InputTag("gtStage2Digis"),
                                      l1tExtBlkInputTag = cms.InputTag("gtStage2Digis"),
@@ -303,6 +376,8 @@ process.K0Filter = cms.EDFilter('K0Filter',
                                      PUCorrectionArray = cms.vdouble(*PUCorrectionData.flatten().tolist()),
                                      l1Seeds           = cms.vstring(L1Info),
                                      pfjets            = pfjetsTag,
+                                     pfjetsUp          = pfjetsTagUp,
+                                     pfjetsDown        = pfjetsTagDown,
                                      patjets           = patjetsTag,
                                      generatorName = cms.InputTag('generator'),
                                      genJet_src = cms.InputTag('slimmedGenJets',''),
@@ -359,6 +434,14 @@ process.K0Vertexer = cms.EDProducer('K0Vertexer',
                                   weightMap = cms.InputTag("K0Filter", "weightMap")
                                   )
 
+if(options.isMC and options.doJECUnc):
+    process.K0VertexerJECup = process.K0Vertexer.clone(
+        pfjets = cms.InputTag("K0Filter","pfjetsUp")
+    )
+    process.K0VertexerJECdown = process.K0Vertexer.clone(
+        pfjets = cms.InputTag("K0Filter","pfjetsDown")
+    )
+
 process.K0Tree = cms.EDAnalyzer('K0TreeMakerRun3',
                                       isMC = cms.bool(options.isMC),
                                       required_ntk     = cms.int32(2), #default is 2
@@ -391,9 +474,55 @@ process.K0Tree = cms.EDAnalyzer('K0TreeMakerRun3',
                                       scoutingParticle = scoutingPFTag,
                                       weightMap = cms.InputTag("K0Filter", "weightMap")
                                       )
+
+if(options.isMC and options.doJECUnc):
+    process.K0TreeJECup = process.K0Tree.clone(
+        pfjets = cms.InputTag("K0Filter","pfjetsUp"),
+        vertexShiftZMap   = cms.InputTag("K0VertexerJECup","vtxZShift"),
+        vertexShift3DMap  = cms.InputTag("K0VertexerJECup","vtx3DShift"),
+        displacedVertices = cms.InputTag("K0VertexerJECup"),
+        fillScoutTrack = cms.bool( False )
+    )
+    process.K0TreeJECdown = process.K0Tree.clone(
+        pfjets = cms.InputTag("K0Filter","pfjetsDown"),
+        vertexShiftZMap   = cms.InputTag("K0VertexerJECdown","vtxZShift"),
+        vertexShift3DMap  = cms.InputTag("K0VertexerJECdown","vtx3DShift"),
+        displacedVertices = cms.InputTag("K0VertexerJECdown"),
+        fillScoutTrack = cms.bool( False )
+    )
+
 # Usually it is better to put producers on a task instead of a path
 # but paths also work.
-if(options.doJEC):
+if(options.doJECOffline):
+    if(options.isMC and options.doJECUnc):
+        process.p = cms.Path(
+            process.scoutingToRecoJets *
+            process.jecAppliedJetProducer *
+            process.jecAppliedJetProducerJECup *
+            process.jecAppliedJetProducerJECdown *
+            process.gtStage2Digis *
+            process.K0Filter * 
+            process.hltScoutingUnpackProducer *
+            process.offlineBeamSpot *
+            process.K0Vertexer *
+            process.K0VertexerJECup *
+            process.K0VertexerJECdown *
+            process.K0Tree *
+            process.K0TreeJECup *
+            process.K0TreeJECdown
+        )
+    else:
+        process.p = cms.Path(
+            process.scoutingToRecoJets *
+            process.jecAppliedJetProducer *
+            process.gtStage2Digis *
+            process.K0Filter * 
+            process.hltScoutingUnpackProducer *
+            process.offlineBeamSpot *
+            process.K0Vertexer *
+            process.K0Tree
+        )
+else:
     process.p = cms.Path(
         process.scoutingToRecoJets *
         process.hltAK4PFFastJetCorrector *
@@ -403,18 +532,8 @@ if(options.doJEC):
         process.hltAK4PFCorrector *
         process.scoutingPFJetCorrected *
         process.gtStage2Digis *
-        process.K0Filter *
+        process.K0Filter * 
         process.hltScoutingUnpackProducer *
-        process.offlineBeamSpot * 
-        process.K0Vertexer *
-        process.K0Tree
-    )
-else:
-    process.p = cms.Path(
-        process.scoutingToRecoJets *
-        process.hltScoutingUnpackProducer *
-        process.gtStage2Digis *
-        process.K0Filter *
         process.offlineBeamSpot *
         process.K0Vertexer *
         process.K0Tree
