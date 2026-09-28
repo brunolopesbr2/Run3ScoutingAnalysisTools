@@ -513,13 +513,15 @@ if(options.isMC and options.doJECUnc):
         pfjets = cms.InputTag("triggerFilter","pfjetsUp"),
         vertexShiftZMap   = cms.InputTag("VertexerJECup","vtxZShift"),
         vertexShift3DMap  = cms.InputTag("VertexerJECup","vtx3DShift"),
-        displacedVertices = cms.InputTag("VertexerJECup")
+        displacedVertices = cms.InputTag("VertexerJECup"),
+        fillScoutTrack = cms.bool( False )
     )
     process.scoutingTreeJECdown = process.scoutingTree.clone(
         pfjets = cms.InputTag("triggerFilter","pfjetsDown"),
         vertexShiftZMap   = cms.InputTag("VertexerJECdown","vtxZShift"),
         vertexShift3DMap  = cms.InputTag("VertexerJECdown","vtx3DShift"),
-        displacedVertices = cms.InputTag("VertexerJECdown")
+        displacedVertices = cms.InputTag("VertexerJECdown"),
+        fillScoutTrack = cms.bool( False )
     )
 
 # Usually it is better to put producers on a task instead of a path
