@@ -167,8 +167,18 @@ private:
   const edm::EDGetTokenT<std::map<std::string, float>> weightsToken_;
   
   edm::EDPutTokenT<reco::VertexCollection> putToken_;
+  std::unique_ptr<KalmanVertexFitter> kv_reco;
   edm::EDPutTokenT<edm::ValueMap<std::pair<float,float>>> vertexShiftZToken_;
   edm::EDPutTokenT<edm::ValueMap<std::pair<float,float>>> vertexShift3DToken_;
+
+  std::vector<TransientVertex> kv_reco_dropin(std::vector<reco::TransientTrack> & ttks) {
+  if (ttks.size() < 2)
+    return std::vector<TransientVertex>();
+  std::vector<TransientVertex> v(1, kv_reco->vertex(ttks));
+  if (v[0].normalisedChiSquared() > 5)
+    return std::vector<TransientVertex>();
+  return v;
+  }
   
   // ----------member data ---------------------------
 
@@ -297,7 +307,9 @@ Vertexer::Vertexer(edm::ParameterSet const& params)
   pfjetsToken_(consumes<std::vector<reco::PFJet>>(params.getParameter<edm::InputTag>("pfjets"))),
   token_builder(esConsumes(edm::ESInputTag("", "TransientTrackBuilder"))),
   weightsToken_(consumes<std::map<std::string, float>>(edm::InputTag("triggerFilter", "weightMap"))),
-  putToken_{produces()} {
+  putToken_{produces()},
+  kv_reco(new KalmanVertexFitter(true))
+{
   vertexShiftZToken_ = produces<edm::ValueMap<std::pair<float,float>>>("vtxZShift");
   vertexShift3DToken_ = produces<edm::ValueMap<std::pair<float,float>>>("vtx3DShift");
 }
@@ -309,15 +321,7 @@ Vertexer::~Vertexer() {}
 // member functions
 //
 
-KalmanVertexFitter kv_reco;
-std::vector<TransientVertex> kv_reco_dropin(std::vector<reco::TransientTrack> & ttks) {
-  if (ttks.size() < 2)
-    return std::vector<TransientVertex>();
-  std::vector<TransientVertex> v(1, kv_reco.vertex(ttks));
-  if (v[0].normalisedChiSquared() > 5)
-    return std::vector<TransientVertex>();
-  return v;
-}
+
 
 
 // ------------ method called to produce the data  ------------
@@ -528,7 +532,7 @@ void Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
     for (int i = 0; i < n_tracks_per_seed_vertex; ++i)
       ttks[i] = seed_tracks[itks[i]];
 
-    TransientVertex seed_vertex = kv_reco.vertex(ttks);
+    TransientVertex seed_vertex = kv_reco->vertex(ttks);
     if (seed_vertex.isValid() && seed_vertex.normalisedChiSquared() < max_seed_vertex_chi2) { 
       vertices->push_back(reco::Vertex(seed_vertex));
 
@@ -865,7 +869,7 @@ void Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         for (size_t j = 0; j < ntks; ++j)
           if (j != i)
             ttks[j - (j >= i)] = tt_builder.build(tks[j]);
-        reco::Vertex vnm1(TransientVertex(kv_reco.vertex(ttks)));
+        reco::Vertex vnm1(TransientVertex(kv_reco->vertex(ttks)));
         const double dist3_2 = (vnm1.x() - v[0]->x())*(vnm1.x() - v[0]->x()) + (vnm1.y() - v[0]->y())*(vnm1.y() - v[0]->y()) + (vnm1.z() - v[0]->z())*(vnm1.z() - v[0]->z());
         const double distz = sqrt( (vnm1.z() - v[0]->z()) * (vnm1.z() - v[0]->z()) );
 	shiftZVec[seed_track_index_map[tks[i]]] = std::make_pair(distz,sqrt(fabs(vnm1.covariance(2,2)-v[0]->covariance(2,2))));
@@ -908,7 +912,7 @@ void Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 	  v[0] = vertices->erase(v[0]) - 1;
 	  continue;
 	}
-	reco::Vertex vnm1_shift(TransientVertex(kv_reco.vertex(ttks_shift)));
+	reco::Vertex vnm1_shift(TransientVertex(kv_reco->vertex(ttks_shift)));
 	*v[0] = vnm1_shift;
       }
     }
@@ -974,7 +978,7 @@ void Vertexer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
               ttks.push_back(seed_tracks[seed_track_ref_map[tk]]);
 
             if (investigate_merged_vertices) {
-              std::vector<TransientVertex> tv(1, kv_reco.vertex(ttks));
+              std::vector<TransientVertex> tv(1, kv_reco->vertex(ttks));
               potential_merged_vertices.push_back(reco::Vertex(tv[0]));
               //std::cout << "ntrack in potental merged: " << potential_merged_vertices.back().nTracks() << std::endl;
             }
