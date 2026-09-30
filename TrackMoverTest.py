@@ -43,11 +43,24 @@ options.register('PUFile',
                  "Name of pileup correction file to use"
     )
 
-options.register('useLooseJets',
+options.register('UncertaintyCorrectionFile',
+                 'ratio_uncertaintyCorrections_v33.npz',
+                 VarParsing.VarParsing.multiplicity.singleton,
+                 VarParsing.VarParsing.varType.string,
+                 "Name of track uncertainty correction file to use"
+    )
+options.register('doJECOffline',
+                 True,
+                 VarParsing.VarParsing.multiplicity.singleton,
+                 VarParsing.VarParsing.varType.bool,
+                 "If offline or online (GT) corrections are applied"
+)
+
+options.register('doJECUnc',
                  False,
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.bool,
-                 "Whether to select loose or tight jets on the EventSkim"
+                 "If JEC uncertainties are applied"
 )
 
 options.register('validation',
@@ -90,14 +103,6 @@ options.register('TriggerCorrectionsBinEdge',
                  VarParsing.VarParsing.varType.string,
                  "Upper bin edges in HT of the trigger corrections"
     )
-# ------
-
-options.register('doJEC',
-                 True,
-                 VarParsing.VarParsing.multiplicity.singleton,
-                 VarParsing.VarParsing.varType.bool,
-                 "If HLT jet corrections are applied"
-)
 
 options.parseArguments()
 process.load("FWCore.MessageService.MessageLogger_cfi")
@@ -110,8 +115,9 @@ process.options = cms.untracked.PSet(
 process.MessageLogger.cerr.FwkSummary.reportEvery = 100
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(100000) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 PUCorrectionData = np.load(options.PUFile)
+UncertaintyCorrectionData = np.load(options.UncertaintyCorrectionFile)
 
 TriggerCorrectionNominal = np.load(options.TriggerCorrectionsNominal)
 TriggerCorrectionUp = np.load(options.TriggerCorrectionsUp)
@@ -121,7 +127,7 @@ TriggerCorrectionBinEdge = np.load(options.TriggerCorrectionsBinEdge)
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring(
         #MC test file
-        #'/store/mc/RunIII2024Summer24MiniAOD/QCD-4Jets_Bin-HT-1000to1200_TuneCP5_13p6TeV_madgraphMLM-pythia8/MINIAODSIM/140X_mcRun3_2024_realistic_v26-v2/100000/00f7403b-49bf-4efd-9b8f-0398bd61d910.root'
+        '/store/mc/RunIII2024Summer24MiniAOD/QCD-4Jets_Bin-HT-1000to1200_TuneCP5_13p6TeV_madgraphMLM-pythia8/MINIAODSIM/140X_mcRun3_2024_realistic_v26-v2/100000/00f7403b-49bf-4efd-9b8f-0398bd61d910.root'
         #'/store/user/brlopesd/StopStopbarTo2Dbar2D_M-200_CTau-1mm_Summer24_100k_v2/StopStopbarTo2Dbar2D_M-200_CTau-1mm_Summer24_100k_miniAOD_v2/250214_150834/0000/stop_dbar_miniAOD_1.root'
         #Data test file
         #'/store/data/Run2024D/ScoutingPFRun3/HLTSCOUT/v1/000/380/945/00000/cdf45723-07c4-4b41-9595-f368f2929369.root'
@@ -138,7 +144,8 @@ process.source = cms.Source("PoolSource",
         #Era E Run 381544 LS 1096
         #'/store/data/Run2024E/ScoutingPFRun3/HLTSCOUT/v1/000/381/544/00000/410771c4-3829-4638-8b0a-5126be4cacc9.root'
         #offline test
-        'file:testDataFile.root'
+        #'file:testDataFile.root'
+        #'file:testFileMC.root'
     )
 )
 
@@ -202,13 +209,20 @@ if(options.isScouting):
     lostTrackTag = cms.InputTag("")
 
     #skim
-    if(options.doJEC):
-        pfjetsTag = cms.InputTag("scoutingPFJetCorrected")
+    if(options.doJECOffline):
+        pfjetsTag = cms.InputTag("jecAppliedJetProducer", "CorrectedAK4")
+        if(options.doJECUnc):
+            pfjetsTagUp = cms.InputTag("jecAppliedJetProducerJECup", "CorrectedAK4")
+            pfjetsTagDown = cms.InputTag("jecAppliedJetProducerJECdown", "CorrectedAK4")
+        else:
+            pfjetsTagUp = cms.InputTag("")
+            pfjetsTagDown = cms.InputTag("")
         patjetsTag = cms.InputTag("")
     else:
-        pfjetsTag = cms.InputTag("scoutingToRecoJets")
+        pfjetsTag = cms.InputTag("scoutingPFJetCorrected")
+        pfjetsTagUp = cms.InputTag("")
+        pfjetsTagDown = cms.InputTag("")
         patjetsTag = cms.InputTag("")
-
     #tree maker
     skimPFJetsTag = cms.InputTag("triggerFilter","pfjets")
     skimPatJetsTag = cms.InputTag("")
@@ -276,6 +290,60 @@ process.scoutingPFJetCorrected = cms.EDProducer("CorrectedPFJetProducer",
     src = cms.InputTag("scoutingToRecoJets"),
 )
 
+#Correction from JSON
+isDataBool = cms.bool(not options.isMC)
+if(options.isMC):
+    eraToJEC = cms.string("")
+else:
+    eraToJEC = cms.string("Era2024ScoutingAll")
+
+process.jecAppliedJetProducer = cms.EDProducer(
+    "JecAppliedJetProducer",
+    isDebug = cms.bool(False),  # set True to dump [JERC DEBUG] logs
+
+    Jets = cms.PSet(
+        srcAK4 = cms.InputTag("scoutingToRecoJets"),          # pat::JetCollection
+        rho    = cms.InputTag("hltScoutingPFPacker", "rho"),
+        Year   = cms.string("2024Scouting"),
+        IsData = isDataBool,
+
+        # Optional era ("" => None)
+        Era    = eraToJEC,
+
+        # --- Choose one of: "Nominal", "JES", "JER"
+        SystKind    = cms.string("Nominal"),
+
+        # If SystKind == "JES"
+        JesSystName = cms.string("AbsoluteStat"),  # correction set key
+        JesSystVar  = cms.string("Up"),            # "Up" | "Down"
+
+        # If SystKind == "JER"
+        JerVar      = cms.string("nom"),           # "nom" | "up" | "down"
+        JerRegion   = cms.PSet(                    # optional gate
+            etaMin = cms.double(0.0),
+            etaMax = cms.double(999.0),
+            ptMin  = cms.double(0.0),
+            ptMax  = cms.double(1.0e9),
+        ),
+        JecConfig = cms.FileInPath("Run3ScoutingAnalysisTools/OfflineJetCorrector/data/JecConfigAK4.json"),
+        JerToolConfig = cms.FileInPath("Run3ScoutingAnalysisTools/OfflineJetCorrector/data/jer_smear.json.gz"),
+    ),
+)
+if(options.doJECUnc and options.isMC):
+    process.jecAppliedJetProducerJECup = process.jecAppliedJetProducer.clone(
+        Jets = dict(
+            SystKind    = cms.string("JES"),
+            JesSystName = cms.string("CMS_scale_j_Total"),
+            JesSystVar  = cms.string("Up"),
+        )
+    )
+    process.jecAppliedJetProducerJECdown = process.jecAppliedJetProducer.clone(
+        Jets = dict(
+            SystKind    = cms.string("JES"),
+            JesSystName = cms.string("CMS_scale_j_Total"),
+            JesSystVar  = cms.string("Down"),
+        )
+    )
 
 process.hltScoutingUnpackProducer = cms.EDProducer('HLTScoutingUnpackProducer',
                                                    scoutingTrack = scoutingTrackTag,
@@ -285,12 +353,21 @@ process.hltScoutingUnpackProducer = cms.EDProducer('HLTScoutingUnpackProducer',
                                                    lostTrack = lostTrackTag,
                                                    isScouting = cms.bool(options.isScouting),
                                                    producePFCHSCandidate = cms.bool(False),
-                                                   mightGet = cms.optional.untracked.vstring
+                                                   mightGet = cms.optional.untracked.vstring,
+                                                   isMC = cms.bool(options.isMC),
+                                                   doUncCorrection = cms.bool(True),
+                                                   dxyErrCorrBarrel = cms.vdouble(*UncertaintyCorrectionData["ratio_correction_dxyErr_barrel_jetMatched"].tolist()),
+                                                   dxyErrCorrDisk   = cms.vdouble(*UncertaintyCorrectionData["ratio_correction_dxyErr_disk_jetMatched"].tolist()),
+                                                   dzErrCorrBarrel  = cms.vdouble(*UncertaintyCorrectionData["ratio_correction_dzErr_barrel_jetMatched"].tolist()),
+                                                   dzErrCorrDisk    = cms.vdouble(*UncertaintyCorrectionData["ratio_correction_dzErr_disk_jetMatched"].tolist()),
+                                                   covCorrBarrel    = cms.vdouble(*UncertaintyCorrectionData["ratio_correction_dzdxyCov_barrel_jetMatched"].tolist()),
+                                                   covCorrDisk      = cms.vdouble(*UncertaintyCorrectionData["ratio_correction_dzdxyCov_disk_jetMatched"].tolist()),
                                                    )
 
 
 process.triggerFilter = cms.EDFilter('TriggerFilter',
                                      isMC = cms.bool(options.isMC),
+                                     doJECUnc = cms.bool(options.doJECUnc),
                                      triggerresults   = cms.InputTag("TriggerResults", "", "HLT"),
                                      AlgInputTag       = cms.InputTag("gtStage2Digis"),
                                      l1tExtBlkInputTag = cms.InputTag("gtStage2Digis"),
@@ -303,6 +380,8 @@ process.triggerFilter = cms.EDFilter('TriggerFilter',
                                      L1HTThreshold = cms.double(0.0),
                                      l1Seeds           = cms.vstring(L1Info),
                                      pfjets            = pfjetsTag,
+                                     pfjetsUp          = pfjetsTagUp,
+                                     pfjetsDown        = pfjetsTagDown,
                                      patjets           = patjetsTag,
                                      generatorName = cms.InputTag('generator'),
                                      genJet_src = cms.InputTag('slimmedGenJets',''),
@@ -313,12 +392,19 @@ process.triggerFilter = cms.EDFilter('TriggerFilter',
                                      triggerUp = cms.vdouble(*TriggerCorrectionUp.flatten().tolist()),
                                      triggerDown = cms.vdouble(*TriggerCorrectionDown.flatten().tolist()),
                                      triggerEdge = cms.vdouble(*TriggerCorrectionBinEdge.flatten().tolist()),
-                                     useLooseJets = cms.bool(options.useLooseJets),
                                      val = cms.bool(options.validation)
                                      )
 
 process.RandomNumberGeneratorService = cms.Service("RandomNumberGeneratorService",
     trackMover = cms.PSet(
+        initialSeed = cms.untracked.uint32(1234),
+        engineName = cms.untracked.string("TRandom3")
+    ),
+    trackMoverJECup = cms.PSet(
+        initialSeed = cms.untracked.uint32(1234),
+        engineName = cms.untracked.string("TRandom3")
+    ),
+    trackMoverJECdown = cms.PSet(
         initialSeed = cms.untracked.uint32(1234),
         engineName = cms.untracked.string("TRandom3")
     )
@@ -327,21 +413,32 @@ process.RandomNumberGeneratorService = cms.Service("RandomNumberGeneratorService
 process.trackMover = cms.EDProducer('TrackMover',
                                     tracks_src = cms.InputTag("hltScoutingUnpackProducer", "Track"),
                                     primary_vertices_src = cms.InputTag("hltScoutingUnpackProducer", "PrimaryVertex"),
-                                    jets_src = cms.InputTag("triggerFilter", "pfjets"),
+                                    jets_src = skimPFJetsTag,
                                     muons_src = cms.InputTag("hltScoutingMuonPackerNoVtx"),
                                     isMC = cms.bool(options.isMC),
                                     min_jet_pt = cms.double(30.),
                                     min_jet_ntracks = cms.int32(2),
                                     max_jet_track_dR = cms.double(0.4),
                                     njets = cms.int32(2),
-                                    rapidityBoost = cms.double(1.0),
-                                    tau = cms.double(0.3),
+                                    rapidityBoost = cms.double(0.0),
+                                    tau = cms.double(1.0),
                                     track_keep_prob = cms.double(1.),
                                     sig_theta = cms.double(0.2),
                                     sig_phi = cms.double(0.2),
                                     trackEffVariation = cms.string("ratio") #ratio, ratio_plus1sigma, ratio_minus1sigma
 )
+if(options.isMC and options.doJECUnc):
+    process.trackMoverJECup = process.trackMover.clone(
+        jets_src = cms.InputTag("triggerFilter","pfjetsUp"),
+    )
+    process.trackMoverJECdown = process.trackMover.clone(
+        jets_src = cms.InputTag("triggerFilter","pfjetsDown"),
+    )
 
+pt_min_val = 1.0
+npixelHits_min_val = 2
+nstripHits_min_val = 1
+ntrackerLayers_min_val = 5
 process.Vertexer = cms.EDProducer('Vertexer',
                                   generatorName = cms.InputTag('generator'),
                                   luminosity = cms.double(options.lumi), #2024 luminosity (fb-1)
@@ -351,12 +448,12 @@ process.Vertexer = cms.EDProducer('Vertexer',
                                   isMC = cms.bool(options.isMC),
                                   seed_tracks_src = cms.InputTag('trackMover', 'outputTracks'),
                                   pfjets = skimPFJetsTag,
-                                  pt_min_cut = cms.double(1.0),
+                                  pt_min_cut = cms.double(pt_min_val),
                                   dxySig_min_cut = cms.double(4.0),
                                   dxySig_max_cut = cms.double(-1), #dxySig between 2.5 and 4.0 for a control region, dxySig>4 with no max for signal region
-                                  npixelHits_min_cut = cms.int32(2),
-                                  nstripHits_min_cut = cms.int32(1),
-                                  ntrackerLayers_min_cut = cms.int32(5),
+                                  npixelHits_min_cut = cms.int32(npixelHits_min_val),
+                                  nstripHits_min_cut = cms.int32(nstripHits_min_val),
+                                  ntrackerLayers_min_cut = cms.int32(ntrackerLayers_min_val),
                                   #kvr_params = kvr_params,
                                   #do_track_refinement = cms.bool(False), # remove tracks + trim out tracks with IP significance larger than trackrefine_sigmacut and trackrefine_trimmax, respectively
                                   resolve_split_vertices_loose = cms.bool(False), # an alternative merging routine with `loose` criteria, to merge any nearby vertices within a given dist or significance
@@ -386,27 +483,99 @@ process.Vertexer = cms.EDProducer('Vertexer',
                                   weightMap = cms.InputTag("triggerFilter", "weightMap")
                                   )
 
+if(options.isMC and options.doJECUnc):
+    process.VertexerJECup = process.Vertexer.clone(
+        seed_tracks_src = cms.InputTag('trackMoverJECup', 'outputTracks'),
+        pfjets = cms.InputTag("triggerFilter","pfjetsUp")
+    )
+    process.VertexerJECdown = process.Vertexer.clone(
+        seed_tracks_src = cms.InputTag('trackMoverJECdown', 'outputTracks'),
+        pfjets = cms.InputTag("triggerFilter","pfjetsDown")
+    )
+
+
 process.vertexEffTree = cms.EDAnalyzer('VertexEffAnalyzer',
                                         primary_vertices = cms.InputTag("hltScoutingUnpackProducer", "PrimaryVertex"),
                                         original_tracks = cms.InputTag("hltScoutingUnpackProducer", "Track"),
                                         tracks = cms.InputTag('trackMover', 'outputTracks'),
                                         moved_tracks = cms.InputTag('trackMover', 'movedTracks'),
+                                        survived_tracks = cms.InputTag('trackMover', 'survivedTracks'),
+                                        close_tracks = cms.InputTag('trackMover', 'closeTracks'),
                                         move_vertex = cms.InputTag('trackMover', 'moveVertex'),
                                         vertices = cms.InputTag("Vertexer"),
                                         n_presel_jets = cms.InputTag('trackMover', 'npreseljets'),
                                         moved_jets = cms.InputTag('trackMover', 'jetsUsed'),
+                                        original_jets = skimPFJetsTag,
                                         flight_axis = cms.InputTag('trackMover', 'flightAxis'),
                                         matchVertexDistance = cms.double(0.02),
                                         isMC = cms.bool(options.isMC),
+                                        muons = cms.InputTag("hltScoutingMuonPackerNoVtx"),
+                                        scoutingParticle = scoutingPFTag,
                                         weightMap = cms.InputTag("triggerFilter", "weightMap"),
                                         debugTree = cms.bool(options.debugTree)
                                       )
 
+if(options.isMC and options.doJECUnc):
+    process.vertexEffTreeJECup = process.vertexEffTree.clone(
+        tracks = cms.InputTag('trackMoverJECup', 'outputTracks'),
+        moved_tracks = cms.InputTag('trackMoverJECup', 'movedTracks'),
+        survived_tracks = cms.InputTag('trackMoverJECup', 'survivedTracks'),
+        close_tracks = cms.InputTag('trackMoverJECup', 'closeTracks'),
+        move_vertex = cms.InputTag('trackMoverJECup', 'moveVertex'),
+        vertices = cms.InputTag("VertexerJECup"),
+        n_presel_jets = cms.InputTag('trackMoverJECup', 'npreseljets'),
+        moved_jets = cms.InputTag('trackMoverJECup', 'jetsUsed'),
+        original_jets = cms.InputTag("triggerFilter","pfjetsUp")
+    )
+    process.vertexEffTreeJECdown = process.vertexEffTree.clone(
+        tracks = cms.InputTag('trackMoverJECdown', 'outputTracks'),
+        moved_tracks = cms.InputTag('trackMoverJECdown', 'movedTracks'),
+        survived_tracks = cms.InputTag('trackMoverJECdown', 'survivedTracks'),
+        close_tracks = cms.InputTag('trackMoverJECdown', 'closeTracks'),
+        move_vertex = cms.InputTag('trackMoverJECdown', 'moveVertex'),
+        vertices = cms.InputTag("VertexerJECdown"),
+        n_presel_jets = cms.InputTag('trackMoverJECdown', 'npreseljets'),
+        moved_jets = cms.InputTag('trackMoverJECdown', 'jetsUsed'),
+        original_jets = cms.InputTag("triggerFilter","pfjetsUp")
+    )
 
 
 # Usually it is better to put producers on a task instead of a path
 # but paths also work.
-if(options.doJEC):
+if(options.doJECOffline):
+    if(options.isMC and options.doJECUnc):
+        process.p = cms.Path(
+            process.scoutingToRecoJets *
+            process.jecAppliedJetProducer *
+            process.jecAppliedJetProducerJECup *
+            process.jecAppliedJetProducerJECdown *
+            process.gtStage2Digis *
+            process.triggerFilter *
+            process.hltScoutingUnpackProducer *
+            process.trackMover *
+            process.trackMoverJECup *
+            process.trackMoverJECdown *
+            process.offlineBeamSpot *
+            process.Vertexer *
+            process.VertexerJECup *
+            process.VertexerJECdown *
+            process.vertexEffTree *
+            process.vertexEffTreeJECup *
+            process.vertexEffTreeJECdown
+        )
+    else:
+        process.p = cms.Path(
+            process.scoutingToRecoJets *
+            process.jecAppliedJetProducer *
+            process.gtStage2Digis *
+            process.triggerFilter *
+            process.hltScoutingUnpackProducer *
+            process.trackMover *
+            process.offlineBeamSpot *
+            process.Vertexer *
+            process.vertexEffTree
+        )
+else:
     process.p = cms.Path(
         process.scoutingToRecoJets *
         process.hltAK4PFFastJetCorrector *
@@ -415,17 +584,6 @@ if(options.doJEC):
         process.hltAK4PFResidualCorrector *
         process.hltAK4PFCorrector *
         process.scoutingPFJetCorrected *
-        process.gtStage2Digis *
-        process.triggerFilter *
-        process.hltScoutingUnpackProducer *
-        process.trackMover *
-        process.offlineBeamSpot *
-        process.Vertexer *
-        process.vertexEffTree
-    )
-else:
-    process.p = cms.Path(
-        process.scoutingToRecoJets *
         process.gtStage2Digis *
         process.triggerFilter *
         process.hltScoutingUnpackProducer *

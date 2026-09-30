@@ -112,13 +112,20 @@ private:
   const edm::EDGetTokenT<std::vector<reco::Track>> originalTracksToken_;
   const edm::EDGetTokenT<std::vector<reco::Track>> tracksToken_;
   const edm::EDGetTokenT<std::vector<reco::Track>> movedTracksToken_;
+  const edm::EDGetTokenT<std::vector<reco::Track>> survivedTracksToken_;
+  const edm::EDGetTokenT<std::vector<reco::Track>> closeTracksToken_;
   const edm::EDGetTokenT<std::vector<double>> moveVertexToken_;
   const edm::EDGetTokenT<std::vector<reco::Vertex>> verticesToken_;
   const edm::EDGetTokenT<int> nPreselJetsToken_;
   const edm::EDGetTokenT<std::vector<reco::PFJet>> movedJetsToken_;
+  const edm::EDGetTokenT<std::vector<reco::PFJet>> originalJetsToken_;
   const edm::EDGetTokenT<std::vector<double>> flightAxisToken_;
   double matchVertexDistance;
   bool isMC;
+
+  const edm::EDGetTokenT<std::vector<Run3ScoutingMuon> > muonsToken;
+  const edm::EDGetTokenT<Run3ScoutingParticleCollection> scoutingParticle_collection_token_;
+
   const edm::EDGetTokenT<std::map<std::string, float>> weightsToken_;
   const edm::ESGetToken<BeamSpotOnlineObjects, BeamSpotOnlineHLTObjectsRcd> bsOnlineToken_;
 
@@ -158,6 +165,9 @@ private:
   double moveVertex_dBV;
   double moveVertex_dBV3D;
 
+  double moveVertex_dPVV;
+  double moveVertex_dPVV3D;
+
   std::vector<double> vertices_x;
   std::vector<double> vertices_y;
   std::vector<double> vertices_z;
@@ -168,8 +178,21 @@ private:
   double LLP_netPt;
   double LLP_netP;
 
+  double LLP_dR_withCloseTracks;
+  double LLP_PtSum_withCloseTracks;
+  double LLP_netPt_withCloseTracks;
+  double LLP_netP_withCloseTracks;
+
+  double jets_dR;
+  std::vector<double> jets_pt;
+  std::vector<double> jets_eta;
+  std::vector<double> jets_phi;
+
   //event level
+  int nSurvivedTracks;
+  int nCloseTracks;
   int nVertices;
+  int nPFJets;
   int nMovedTracks;
   int nPreselJets;
   int nPV;
@@ -186,6 +209,11 @@ private:
   double weight;
   double weight_noTrigger;
   double genWeight;
+    
+  float hltHT;
+  float hltHTNeutral;
+  float hltHTCharged;
+  float hltHTProxy;
 
   //Auxiliary functions
 
@@ -211,6 +239,33 @@ private:
     return track_vec(s.begin(), s.end());
   }
 
+  bool matchesPF(int ID, double tolerance, Run3ScoutingMuon const& muonTrack,  edm::Handle<std::vector<Run3ScoutingParticle>> const& scoutingParticleH){
+    bool matches = false;
+
+    float mu_eta = muonTrack.eta();
+    float mu_phi = muonTrack.phi();
+
+    double dEta;
+    double dPhi;
+    double dR;
+
+    for (size_t pf_index = 0; pf_index < scoutingParticleH->size(); pf_index++) {
+      auto & scoutingPFCandidate = scoutingParticleH->at(pf_index);
+
+      float pf_eta = scoutingPFCandidate.eta();
+      float pf_phi = scoutingPFCandidate.phi();
+
+      dEta = mu_eta - pf_eta;
+      dPhi = deltaPhi(mu_phi, pf_phi);
+      dR = sqrt(pow(dEta, 2) + pow(dPhi, 2));
+
+      if(abs(scoutingPFCandidate.pdgId()) == 13 && dR < tolerance){
+            matches = true;
+        }
+    }
+    return matches;
+  }
+
 };
 
 //
@@ -230,13 +285,18 @@ VertexEffAnalyzer::VertexEffAnalyzer(const edm::ParameterSet& iConfig)
     originalTracksToken_(consumes<std::vector<reco::Track>>(iConfig.getParameter<edm::InputTag>("original_tracks"))),
     tracksToken_(consumes<std::vector<reco::Track>>(iConfig.getParameter<edm::InputTag>("tracks"))),
     movedTracksToken_(consumes<std::vector<reco::Track>>(iConfig.getParameter<edm::InputTag>("moved_tracks"))),
+    survivedTracksToken_(consumes<std::vector<reco::Track>>(iConfig.getParameter<edm::InputTag>("survived_tracks"))),
+    closeTracksToken_(consumes<std::vector<reco::Track>>(iConfig.getParameter<edm::InputTag>("close_tracks"))),
     moveVertexToken_(consumes<std::vector<double>>(iConfig.getParameter<edm::InputTag>("move_vertex"))),
     verticesToken_(consumes<std::vector<reco::Vertex>>(iConfig.getParameter<edm::InputTag>("vertices"))),
     nPreselJetsToken_(consumes<int>(iConfig.getParameter<edm::InputTag>("n_presel_jets"))),
     movedJetsToken_(consumes<std::vector<reco::PFJet>>(iConfig.getParameter<edm::InputTag>("moved_jets"))),
+    originalJetsToken_(consumes<std::vector<reco::PFJet>>(iConfig.getParameter<edm::InputTag>("original_jets"))),
     flightAxisToken_(consumes<std::vector<double>>(iConfig.getParameter<edm::InputTag>("flight_axis"))),
     matchVertexDistance(iConfig.getParameter<double>("matchVertexDistance")),
     isMC(iConfig.existsAs<bool>("isMC") ?  iConfig.getParameter<bool>  ("isMC") : false),
+    muonsToken(consumes<std::vector<Run3ScoutingMuon> >(iConfig.getParameter<edm::InputTag>("muons"))),
+    scoutingParticle_collection_token_(consumes(iConfig.getParameter<edm::InputTag>("scoutingParticle"))),
     weightsToken_(consumes<std::map<std::string, float>>(edm::InputTag("triggerFilter", "weightMap"))),
     bsOnlineToken_(esConsumes<BeamSpotOnlineObjects, BeamSpotOnlineHLTObjectsRcd>()),
     debugTree(iConfig.existsAs<bool>("debugTree") ?  iConfig.getParameter<bool>  ("debugTree") : false)
@@ -283,6 +343,127 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   primaryVertex_x.clear();
   primaryVertex_y.clear();
   primaryVertex_z.clear();
+
+  //ensure 3 jets for the JEC variations
+  edm::Handle<std::vector<reco::PFJet>> originalJetsH;
+  iEvent.getByToken(originalJetsToken_, originalJetsH);
+  std::vector<reco::PFJet> pfJetVector;
+
+  nPFJets = 0;
+  if(originalJetsH.isValid()){
+    if(originalJetsH->size()<3) return;
+    nPFJets = originalJetsH->size();
+
+    for (auto jets_iter = originalJetsH->begin(); jets_iter != originalJetsH->end(); ++jets_iter) {
+      pfJetVector.push_back(*jets_iter);      
+    }
+  }
+
+  //HT calculation ===============
+  float dEta_jet_mu;
+  float dPhi_jet_mu;
+  float dR_jet_mu;
+  hltHT = 0;
+  int imuon = 0;
+  bool matches_muon;
+
+  edm::Handle<std::vector<Run3ScoutingMuon> > muonsH;
+  iEvent.getByToken(muonsToken, muonsH);
+  edm::Handle<Run3ScoutingParticleCollection> scoutingParticle_collection_handle;
+  iEvent.getByToken(scoutingParticle_collection_token_, scoutingParticle_collection_handle);
+
+  std::vector<const Run3ScoutingMuon*> selectedMuons;
+
+  bool isPFMuon;
+
+  for (auto muons_iter = muonsH->begin(); muons_iter != muonsH->end(); ++muons_iter) {
+    isPFMuon = matchesPF(13, 0.1, *muons_iter, scoutingParticle_collection_handle);
+
+    if (muons_iter->pt() > 20 &&
+        abs(muons_iter->eta()) < 2.4 &&
+        muons_iter->normalizedChi2() < 10 &&
+        muons_iter->nTrackerLayersWithMeasurement() > 5 &&
+        muons_iter->nValidPixelHits() > 0 &&
+        muons_iter->nValidRecoMuonHits() > 0 &&
+        muons_iter->nRecoMuonMatchedStations() > 1 &&
+        muons_iter->trackIso() < 0.1 &&
+        isPFMuon == true) 
+    {
+      selectedMuons.push_back(&(*muons_iter));
+    }
+  }
+
+  std::vector<reco::PFJet> selected_jets;
+  for (auto jet: pfJetVector) {
+    if((jet.pt() > 30) && (abs(jet.eta()) < 2.5)){    
+      matches_muon = false;
+      for (auto muon : selectedMuons) {
+        dEta_jet_mu = jet.eta() - muon->eta();
+        dPhi_jet_mu = deltaPhi(jet.phi(), muon->phi());
+        dR_jet_mu = sqrt(pow(dEta_jet_mu, 2) + pow(dPhi_jet_mu, 2));
+                
+          if(dR_jet_mu <= 0.20)
+            matches_muon = true;
+
+        imuon++;
+      }
+      if(!matches_muon) {
+        selected_jets.push_back(jet);
+        hltHT = hltHT + jet.pt();
+      }
+    }
+  }
+
+  //charged and neutral components
+  hltHTCharged = 0;
+  hltHTNeutral = 0;
+  hltHTProxy = 0;
+  for (auto pfcands_iter = scoutingParticle_collection_handle->begin(); pfcands_iter != scoutingParticle_collection_handle->end(); ++pfcands_iter) {
+    bool matches_jet = false;
+    for(auto jet: selected_jets){
+      float cand_jet_dR = reco::deltaR(pfcands_iter->eta(), pfcands_iter->phi(), jet.eta(), jet.phi());
+      if(cand_jet_dR < 0.4){
+        matches_jet = true;
+        goto done_check_match;
+      }
+    }
+    done_check_match:
+
+    if(matches_jet){
+      if(abs(pfcands_iter->pdgId()) == 211 || abs(pfcands_iter->pdgId()) == 11 || abs(pfcands_iter->pdgId()) == 13){
+        hltHTCharged = hltHTCharged + pfcands_iter->pt();
+      }
+      else{
+        hltHTNeutral = hltHTNeutral + pfcands_iter->pt();
+      }
+    }
+  }
+
+  hltHTProxy = hltHTNeutral + ( 0.8 - 0.6*exp(-hltHT/300.0) ) * hltHTCharged;
+  // =============================
+
+  edm::Handle<std::vector<reco::PFJet>> movedJetsH;
+  iEvent.getByToken(movedJetsToken_, movedJetsH);
+
+  jets_pt.clear();
+  jets_eta.clear();
+  jets_phi.clear();
+
+  if(movedJetsH.isValid()){
+    jets_dR = 0;
+    for (auto jets_iter = movedJetsH->begin(); jets_iter != movedJetsH->end(); ++jets_iter){
+      jets_pt.push_back(jets_iter->pt());
+      jets_eta.push_back(jets_iter->eta());
+      jets_phi.push_back(jets_iter->phi());
+
+      for (auto jets_iter2 = movedJetsH->begin(); jets_iter2 != movedJetsH->end(); ++jets_iter2){
+        double jets_dR_tmp = reco::deltaR(jets_iter->eta(), jets_iter->phi(), jets_iter2->eta(), jets_iter2->phi());
+        if(jets_dR_tmp > jets_dR){
+          jets_dR = jets_dR_tmp;
+        }
+      }
+    }
+  }
 
   edm::Handle<int> nPreselJetsH;
   iEvent.getByToken(nPreselJetsToken_, nPreselJetsH);
@@ -356,8 +537,15 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     moveVertex_y = moveVertexH->at(1);
     moveVertex_z = moveVertexH->at(2);
 
+    float PVx = primaryVerticesH->at(0).x();
+    float PVy = primaryVerticesH->at(0).y();
+    float PVz = primaryVerticesH->at(0).z();
+
     moveVertex_dBV = TMath::Sqrt(pow(moveVertex_x - fake_bs_vtx.x(), 2) + pow(moveVertex_y - fake_bs_vtx.y(), 2));
     moveVertex_dBV3D = TMath::Sqrt(pow(moveVertex_x - fake_bs_vtx.x(), 2) + pow(moveVertex_y - fake_bs_vtx.y(), 2) + pow(moveVertex_z - fake_bs_vtx.z(), 2));
+
+    moveVertex_dPVV = TMath::Sqrt(pow(moveVertex_x - PVx, 2) + pow(moveVertex_y - PVy, 2));
+    moveVertex_dPVV3D = TMath::Sqrt(pow(moveVertex_x - PVx, 2) + pow(moveVertex_y - PVy, 2) + pow(moveVertex_z - PVz, 2));
 
     //std::cout<<"Analyser sees move vertex x as: "<<moveVertex_x<<std::endl;
   }
@@ -368,6 +556,8 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     moveVertex_z = 0;
     moveVertex_dBV = 0;
     moveVertex_dBV3D = 0;
+    moveVertex_dPVV = 0;
+    moveVertex_dPVV3D = 0;
   }
 
   matchedVertex = false;
@@ -385,7 +575,6 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   Measurement1D dBV_measurement;
   VertexDistanceXY vertex_dist_2d;
 
-  
 
   if(verticesH.isValid() && moveVertexH.isValid()){
     nVertices = verticesH->size();
@@ -424,7 +613,10 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     }
   }
 
-  //get the 4 track collections
+  //get the track collections
+  nSurvivedTracks = 0;
+  nCloseTracks = 0;
+
   edm::Handle<std::vector<reco::Track>> originalTracksH;
   iEvent.getByToken(originalTracksToken_, originalTracksH);
 
@@ -434,7 +626,13 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   edm::Handle<std::vector<reco::Track>> movedTracksH;
   iEvent.getByToken(movedTracksToken_, movedTracksH);
 
+  edm::Handle<std::vector<reco::Track>> survivedTracksH;
+  iEvent.getByToken(survivedTracksToken_, survivedTracksH);
+  if(survivedTracksH.isValid()) nSurvivedTracks = survivedTracksH->size();
 
+  edm::Handle<std::vector<reco::Track>> closeTracksH;
+  iEvent.getByToken(closeTracksToken_, closeTracksH);
+  if(closeTracksH.isValid()) nCloseTracks = closeTracksH->size();
   
   if(originalTracksH.isValid()){
     for (auto originalTracks_iter = originalTracksH->begin(); originalTracks_iter != originalTracksH->end(); ++originalTracks_iter) {
@@ -460,7 +658,14 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   LLP_dR = 0;
   LLP_netPt = 0;
   LLP_netP = 0;
+
+  LLP_PtSum_withCloseTracks = 0;
+  LLP_dR_withCloseTracks = 0;
+  LLP_netPt_withCloseTracks = 0;
+  LLP_netP_withCloseTracks = 0;
+
   nMovedTracks = 0;
+
   if(movedTracksH.isValid()){
     double px = 0;
     double py = 0;
@@ -487,6 +692,40 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     LLP_netP = sqrt(px*px + py*py + pz*pz);
   }
 
+  //now considering the close tracks as well
+  if (movedTracksH.isValid() && closeTracksH.isValid()) {
+    double px = 0;
+    double py = 0;
+    double pz = 0;
+
+    // Build a combined vector of pointers so we only need one loop
+    std::vector<const reco::Track*> allTracks;
+    if (movedTracksH.isValid()) {
+        for (auto it = movedTracksH->begin(); it != movedTracksH->end(); ++it)
+            allTracks.push_back(&(*it));
+    }
+    if (closeTracksH.isValid()) {
+        for (auto it = closeTracksH->begin(); it != closeTracksH->end(); ++it)
+            allTracks.push_back(&(*it));
+    }
+
+    for (auto trk1 : allTracks) {
+        for (auto trk2 : allTracks) {
+            double tmp_dR = reco::deltaR(trk1->eta(), trk1->phi(), trk2->eta(), trk2->phi());
+            if (tmp_dR > LLP_dR_withCloseTracks) LLP_dR_withCloseTracks = tmp_dR;
+        }
+
+        px += trk1->px();
+        py += trk1->py();
+        pz += trk1->pz();
+
+        LLP_PtSum_withCloseTracks += trk1->pt();
+    }
+
+    LLP_netPt_withCloseTracks = sqrt(px*px + py*py);
+    LLP_netP_withCloseTracks  = sqrt(px*px + py*py + pz*pz);
+}
+
   objectTree->Fill();
 }
 
@@ -500,6 +739,10 @@ void VertexEffAnalyzer::beginJob() {
   objectTree->Branch("weight_noTrigger", &weight_noTrigger, "weight_noTrigger/D");
   objectTree->Branch("genWeight", &genWeight, "genWeight/D");
 
+  objectTree->Branch("nSurvivedTracks", &nSurvivedTracks, "nSurvivedTracks/I");
+  objectTree->Branch("nCloseTracks", &nCloseTracks, "nCloseTracks/I");
+  objectTree->Branch("nPFJets", &nPFJets, "nPFJets/I");
+
   objectTree->Branch("nMovedTracks", &nMovedTracks, "nMovedTracks/I");
   objectTree->Branch("nPreselJets", &nPreselJets, "nPreselJets/I");
 
@@ -508,6 +751,9 @@ void VertexEffAnalyzer::beginJob() {
   objectTree->Branch("moveVertex_z", &moveVertex_z, "moveVertex_z/D");
   objectTree->Branch("moveVertex_dBV", &moveVertex_dBV, "moveVertex_dBV/D");
   objectTree->Branch("moveVertex_dBV3D", &moveVertex_dBV3D, "moveVertex_dBV3D/D");
+
+  objectTree->Branch("moveVertex_dPVV", &moveVertex_dPVV, "moveVertex_dPVV/D");
+  objectTree->Branch("moveVertex_dPVV3D", &moveVertex_dPVV3D, "moveVertex_dPVV3D/D");
 
   objectTree->Branch("nPV", &nPV, "nPV/I");
   objectTree->Branch("nVertices", &nVertices, "nVertices/I");
@@ -524,6 +770,21 @@ void VertexEffAnalyzer::beginJob() {
   objectTree->Branch("LLP_PtSum", &LLP_PtSum, "LLP_PtSum/D");
   objectTree->Branch("LLP_netP", &LLP_netP, "LLP_netP/D");
   objectTree->Branch("LLP_netPt", &LLP_netPt, "LLP_netPt/D");
+
+  objectTree->Branch("LLP_dR_withCloseTracks", &LLP_dR_withCloseTracks, "LLP_dR_withCloseTracks/D");
+  objectTree->Branch("LLP_PtSum_withCloseTracks", &LLP_PtSum_withCloseTracks, "LLP_PtSum_withCloseTracks/D");
+  objectTree->Branch("LLP_netP_withCloseTracks", &LLP_netP_withCloseTracks, "LLP_netP_withCloseTracks/D");
+  objectTree->Branch("LLP_netPt_withCloseTracks", &LLP_netPt_withCloseTracks, "LLP_netPt_withCloseTracks/D");
+
+  objectTree->Branch("jets_dR", &jets_dR, "jets_dR/D");
+
+  objectTree->Branch("jets_pt",&jets_pt);
+  objectTree->Branch("jets_eta",&jets_eta);
+  objectTree->Branch("jets_phi",&jets_phi);
+
+  objectTree->Branch("hltHTNeutral", &hltHTNeutral, "hltHTNeutral/F");
+  objectTree->Branch("hltHTCharged", &hltHTCharged, "hltHTCharged/F");
+  objectTree->Branch("hltHTProxy", &hltHTProxy, "hltHTProxy/F");
 
   if(debugTree){
     objectTree->Branch("tracks_pt",&tracks_pt);

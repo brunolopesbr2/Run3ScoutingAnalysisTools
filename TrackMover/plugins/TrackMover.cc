@@ -132,6 +132,8 @@ private:
   //Output tokens, in order 
   edm::EDPutTokenT<reco::TrackCollection> outputTrackToken_;
   edm::EDPutTokenT<reco::TrackCollection> movedTrackToken_;
+  edm::EDPutTokenT<reco::TrackCollection> survivedTrackToken_;
+  edm::EDPutTokenT<reco::TrackCollection> closeTrackToken_;
   edm::EDPutTokenT<int> nPreselJetsToken_;
   edm::EDPutTokenT<std::vector<reco::PFJet>> movedJetsToken_;
   edm::EDPutTokenT<std::vector<double>> flightAxisToken_;
@@ -182,6 +184,8 @@ TrackMover::TrackMover(const edm::ParameterSet& iConfig)
   trackEffVariation(iConfig.getParameter<std::string>("trackEffVariation")),
   outputTrackToken_{produces<reco::TrackCollection>("outputTracks")},
   movedTrackToken_{produces<reco::TrackCollection>("movedTracks")},
+  survivedTrackToken_{produces<reco::TrackCollection>("survivedTracks")},
+  closeTrackToken_{produces<reco::TrackCollection>("closeTracks")},
   nPreselJetsToken_{produces<int>("npreseljets")},
   movedJetsToken_{produces<std::vector<reco::PFJet>>("jetsUsed")},
   flightAxisToken_{produces<std::vector<double>>("flightAxis")},
@@ -217,6 +221,8 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
   std::unique_ptr<reco::TrackCollection> output_tracks(new reco::TrackCollection);
   std::unique_ptr<reco::TrackCollection> moved_tracks(new reco::TrackCollection);
+  std::unique_ptr<reco::TrackCollection> survived_tracks(new reco::TrackCollection);
+  std::unique_ptr<reco::TrackCollection> close_tracks(new reco::TrackCollection);
   std::unique_ptr<std::vector<reco::PFJet>> jets_used(new std::vector<reco::PFJet>);
   std::unique_ptr<std::vector<double>> flight_vect(new std::vector<double>(3, 0.));
   std::unique_ptr<std::vector<double>> move_vertex(new std::vector<double>(3, 0.));
@@ -342,6 +348,8 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   reco::Vertex move_vertex_vtx(p, e);
 
   if (pass_presel && nPV > 0) {
+
+    /* //To select 1 jet then the closest
     int seed_idx = knuth_select(1, presel_jets.size())[0];
     selected_jets.emplace_back(presel_jets[seed_idx]);
     jets_used->emplace_back(presel_jets[seed_idx]);
@@ -356,9 +364,15 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
         jetsMinDeltaR = jetsDeltaR;
       }
     }
-
     selected_jets.emplace_back(presel_jets[partner_idx]);
     jets_used->emplace_back(presel_jets[partner_idx]);
+    */
+    
+    //To select njets jets
+    for (int i : knuth_select(njets, presel_jets.size())) {
+      selected_jets.emplace_back(presel_jets[i]);
+      jets_used->emplace_back(presel_jets[i]);
+    }
 
     //Get the direction of the jets momentum to displace the tracks
     for (reco::PFJet jet : selected_jets)
@@ -479,24 +493,26 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
       new_tk.setNLoops(tracks_iter->nLoops());
       reco::HitPattern* hp = const_cast<reco::HitPattern*>(&new_tk.hitPattern());  *hp = tracks_iter->hitPattern(); 
 
+      survived_tracks->push_back(new_tk);
       output_tracks->push_back(new_tk);
     }
     else {
       output_tracks->push_back(*tracks_iter);
+
       //If the track, by coindicence, is close to the move vertex, also consider for the TM reweighting
-      /*
       reco::TransientTrack ttk = tt_builder.build(*tracks_iter);
       std::pair<bool, Measurement1D> ttk_dist = IPTools::absoluteTransverseImpactParameter(ttk, move_vertex_vtx);
       float IP_sig = ttk_dist.second.significance();
       if (IP_sig < 5){
-        moved_tracks->push_back(*tracks_iter);
-      }
-      */
+        close_tracks->push_back(*tracks_iter);
+      } 
     }
   }
 
   iEvent.emplace(outputTrackToken_, std::move(*output_tracks));
   iEvent.emplace(movedTrackToken_, std::move(*moved_tracks));
+  iEvent.emplace(survivedTrackToken_, std::move(*survived_tracks));
+  iEvent.emplace(closeTrackToken_, std::move(*close_tracks));
   iEvent.emplace(nPreselJetsToken_, static_cast<int>(presel_jets.size()));
   iEvent.emplace(movedJetsToken_, std::move(*jets_used));
   iEvent.emplace(flightAxisToken_, std::move(*flight_vect));

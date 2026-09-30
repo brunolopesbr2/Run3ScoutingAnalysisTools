@@ -484,7 +484,17 @@ private:
   std::vector<double>* genVert_deltaR_TM;
   std::vector<double>* genVert_dBV2D_TM;
   std::vector<double>* genVert_dBV3D_TM;
+
+  std::vector<double>* genVert1_daughter_pt;
+  std::vector<double>* genVert1_daughter_eta;
+  std::vector<double>* genVert1_daughter_phi;
+  std::vector<double>* genVert2_daughter_pt;
+  std::vector<double>* genVert2_daughter_eta;
+  std::vector<double>* genVert2_daughter_phi;
+
   double genVert_dVV_TM;
+  double genVert_dPhiVV_TM;
+  int nPV_TM;
 
   TH1F* h_match_gen_dxy = new TH1F("match_gen_dxy",";Gen particle d_{xy} [cm]; Gen particles / 0.01 cm", 100, 0, 1);
   TH1F* h_gen_dxy = new TH1F("gen_dxy",";Gen particle d_{xy} [cm]; Gen particles / 0.01 cm", 100, 0, 1);
@@ -1144,6 +1154,7 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
   std::vector<reco::PFJet> pfJetVector;
   
   if(pfjetsH.isValid() && isScouting){
+    if(pfjetsH->size()<3) return; //Same as EventSkim, only does something if using a different JES variation
     for (auto jets_iter = pfjetsH->begin(); jets_iter != pfjetsH->end(); ++jets_iter) {
       pfJetVector.push_back(*jets_iter);      
     }
@@ -1485,6 +1496,13 @@ if(isMC && doTMTree){
   std::vector<GlobalPoint> genVertices_TM;
   iEvent.getByToken(GenParticleToken_,genParticle_handle);
   //get the 2 GEN vertices
+  int genVert_idx = 0;
+  genVert1_daughter_pt->clear();
+  genVert1_daughter_eta->clear();
+  genVert1_daughter_phi->clear();
+  genVert2_daughter_pt->clear();
+  genVert2_daughter_eta->clear();
+  genVert2_daughter_phi->clear();
   for(genParticleIter = genParticle_handle->begin(); genParticleIter != genParticle_handle->end(); ++genParticleIter){
     // look for the LLP directly
     if(abs(genParticleIter->pdgId()) != LLP_pdgId) continue;
@@ -1508,6 +1526,24 @@ if(isMC && doTMTree){
 
     if( abs(genParticleIter->daughter(0)->eta()) > 2.4 || abs(genParticleIter->daughter(1)->eta()) > 2.4) continue;
 
+    if(genVert_idx == 0){
+      genVert1_daughter_pt->push_back(genParticleIter->daughter(0)->pt());
+      genVert1_daughter_pt->push_back(genParticleIter->daughter(1)->pt());
+      genVert1_daughter_eta->push_back(genParticleIter->daughter(0)->eta());
+      genVert1_daughter_eta->push_back(genParticleIter->daughter(1)->eta());
+      genVert1_daughter_phi->push_back(genParticleIter->daughter(0)->phi());
+      genVert1_daughter_phi->push_back(genParticleIter->daughter(1)->phi());
+    }
+    if(genVert_idx == 1){
+      genVert2_daughter_pt->push_back(genParticleIter->daughter(0)->pt());
+      genVert2_daughter_pt->push_back(genParticleIter->daughter(1)->pt());
+      genVert2_daughter_eta->push_back(genParticleIter->daughter(0)->eta());
+      genVert2_daughter_eta->push_back(genParticleIter->daughter(1)->eta());
+      genVert2_daughter_phi->push_back(genParticleIter->daughter(0)->phi());
+      genVert2_daughter_phi->push_back(genParticleIter->daughter(1)->phi());
+    }
+    genVert_idx++;
+
     // displaced vertex position comes from the daughter
     GlobalPoint genVertex(genParticleIter->daughter(0)->vx(),
                           genParticleIter->daughter(0)->vy(),
@@ -1525,19 +1561,33 @@ if(isMC && doTMTree){
     genVert_sumPt_TM->push_back(genParticleIter->daughter(0)->pt() + genParticleIter->daughter(1)->pt());
     genVert_deltaR_TM->push_back(reco::deltaR(genParticleIter->daughter(0)->eta(), genParticleIter->daughter(0)->phi(), genParticleIter->daughter(1)->eta(), genParticleIter->daughter(1)->phi()));
 
-    float dx_BV = genVertex.x() - fake_bs_vtx.x();
-    float dy_BV = genVertex.y() - fake_bs_vtx.y();
-    float dz_BV = genVertex.z() - fake_bs_vtx.z();
+    Vertex leading_pv = primaryVertices->at(0);
+    float dx_BV = genVertex.x() - leading_pv.x();
+    float dy_BV = genVertex.y() - leading_pv.y();
+    float dz_BV = genVertex.z() - leading_pv.z();
+
+    //float dx_BV = genVertex.x() - fake_bs_vtx.x();
+    //float dy_BV = genVertex.y() - fake_bs_vtx.y();
+    //float dz_BV = genVertex.z() - fake_bs_vtx.z();
+    //genVert_dBV2D_TM->push_back(sqrt(dx_BV*dx_BV + dy_BV*dy_BV));
+    //genVert_dBV3D_TM->push_back(sqrt(dx_BV*dx_BV + dy_BV*dy_BV + dz_BV*dz_BV));
+
     genVert_dBV2D_TM->push_back(sqrt(dx_BV*dx_BV + dy_BV*dy_BV));
     genVert_dBV3D_TM->push_back(sqrt(dx_BV*dx_BV + dy_BV*dy_BV + dz_BV*dz_BV));
   }
 
   genVert_dVV_TM = 0;
-  if(genVertices_TM.size() == 2){
+  genVert_dPhiVV_TM = 0;
+  if(genVertices_TM.size() == 2 && genVert_idx == 2){ //require 2 gen vertices with both daughters within eta 2.4
     genVert_dVV_TM = sqrt( std::pow(genVertices_TM.at(0).x() - genVertices_TM.at(1).x(), 2) +
                         std::pow(genVertices_TM.at(0).y() - genVertices_TM.at(1).y(), 2) + 
                         std::pow(genVertices_TM.at(0).z() - genVertices_TM.at(1).z(), 2) );
+    genVert_dPhiVV_TM = reco::deltaPhi(
+        static_cast<double>(genVertices_TM.at(0).phi()),
+        static_cast<double>(genVertices_TM.at(1).phi())
+    );
   }
+  nPV_TM = primaryVertices->size(); //Get the nPV also for events with no vertices
   tmTree->Fill();
 }
 
@@ -2360,6 +2410,13 @@ void ScoutingTreeMakerRun3::beginJob() {
     genVert_dBV2D_TM = new std::vector<double>;
     genVert_dBV3D_TM = new std::vector<double>;
 
+    genVert1_daughter_pt = new std::vector<double>;
+    genVert1_daughter_eta = new std::vector<double>;
+    genVert1_daughter_phi = new std::vector<double>;
+    genVert2_daughter_pt = new std::vector<double>;
+    genVert2_daughter_eta = new std::vector<double>;
+    genVert2_daughter_phi = new std::vector<double>;
+
     if(doTMTree){
       tmTree = fs->make<TTree>("tmTree"      , "tmTree");
       tmTree->Branch("genVert_netPt_TM", &genVert_netPt_TM);
@@ -2369,8 +2426,17 @@ void ScoutingTreeMakerRun3::beginJob() {
       tmTree->Branch("genVert_dBV2D_TM", &genVert_dBV2D_TM);
       tmTree->Branch("genVert_dBV3D_TM", &genVert_dBV3D_TM);
       tmTree->Branch("genVert_dVV_TM", &genVert_dVV_TM, "genVert_dVV_TM/D");
+      tmTree->Branch("genVert_dPhiVV_TM", &genVert_dPhiVV_TM, "genVert_dPhiVV_TM/D");
+      tmTree->Branch("genVert1_daughter_pt", &genVert1_daughter_pt);
+      tmTree->Branch("genVert1_daughter_eta", &genVert1_daughter_eta);
+      tmTree->Branch("genVert1_daughter_phi", &genVert1_daughter_phi);
+      tmTree->Branch("genVert2_daughter_pt", &genVert2_daughter_pt);
+      tmTree->Branch("genVert2_daughter_eta", &genVert2_daughter_eta);
+      tmTree->Branch("genVert2_daughter_phi", &genVert2_daughter_phi);
+      tmTree->Branch("nPV_TM", &nPV_TM, "nPV_TM/I");
       tmTree->Branch("weight", &weight, "weight/D");
       tmTree->Branch("uncorrectedWeight", &uncorrectedWeight, "uncorrectedWeight/D");
+      tmTree->Branch("hltHTProxy", &hltHTProxy, "hltHTProxy/F");
     }
 
     
@@ -2868,6 +2934,16 @@ void ScoutingTreeMakerRun3::endJob() {
   delete genVert_deltaR_TM;
   delete genVert_dBV2D_TM;
   delete genVert_dBV3D_TM;
+
+  delete genVert_netPt_TM;
+  delete genVert_netP_TM;
+
+  delete genVert1_daughter_pt;
+  delete genVert1_daughter_eta;
+  delete genVert1_daughter_phi;
+  delete genVert2_daughter_pt;
+  delete genVert2_daughter_eta;
+  delete genVert2_daughter_phi;
 }
 
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
