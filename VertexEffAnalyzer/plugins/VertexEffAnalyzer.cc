@@ -129,6 +129,8 @@ private:
   const edm::EDGetTokenT<std::map<std::string, float>> weightsToken_;
   const edm::ESGetToken<BeamSpotOnlineObjects, BeamSpotOnlineHLTObjectsRcd> bsOnlineToken_;
 
+  const edm::ESGetToken<TransientTrackBuilder, TransientTrackRecord> token_builder;
+
   bool debugTree;
 
   //Auxiliary Variables
@@ -190,7 +192,12 @@ private:
 
   //event level
   int nSurvivedTracks;
-  int nCloseTracks;
+  int nCloseBGTracks;
+  int nCloseTotalTracks;
+  int nSurvivedTracks_IPsig;
+  int nCloseBGTracks_IPsig;
+  int nCloseTotalTracks_IPsig;
+
   int nVertices;
   int nPFJets;
   int nMovedTracks;
@@ -299,6 +306,7 @@ VertexEffAnalyzer::VertexEffAnalyzer(const edm::ParameterSet& iConfig)
     scoutingParticle_collection_token_(consumes(iConfig.getParameter<edm::InputTag>("scoutingParticle"))),
     weightsToken_(consumes<std::map<std::string, float>>(edm::InputTag("triggerFilter", "weightMap"))),
     bsOnlineToken_(esConsumes<BeamSpotOnlineObjects, BeamSpotOnlineHLTObjectsRcd>()),
+    token_builder(esConsumes(edm::ESInputTag("", "TransientTrackBuilder"))),
     debugTree(iConfig.existsAs<bool>("debugTree") ?  iConfig.getParameter<bool>  ("debugTree") : false)
     {}
 
@@ -549,8 +557,8 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
     //std::cout<<"Analyser sees move vertex x as: "<<moveVertex_x<<std::endl;
   }
-
   else{
+    std::cout<<"Warning: invalid move vertex"<<std::endl;
     moveVertex_x = 0;
     moveVertex_y = 0;
     moveVertex_z = 0;
@@ -615,24 +623,70 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
 
   //get the track collections
   nSurvivedTracks = 0;
-  nCloseTracks = 0;
+  nCloseBGTracks = 0;
+  nCloseTotalTracks = 0;
+  nSurvivedTracks_IPsig = 0;
+  nCloseBGTracks_IPsig = 0;
+  nCloseTotalTracks_IPsig = 0;
+  
+  //create a reco::Vertex to check for close tracks with IPTools
+  reco::Vertex::Point p(moveVertex_x, moveVertex_y, moveVertex_z);
+  // negligible error -> significance dominated by the track's own uncertainty
+  reco::Vertex::Error e;
+  e(0,0) = 1e-10;
+  e(1,1) = 1e-10;
+  e(2,2) = 1e-10;
+  reco::Vertex move_vertex_vtx(p, e);
+
+  auto const &tt_builder = iSetup.getData(token_builder);
 
   edm::Handle<std::vector<reco::Track>> originalTracksH;
   iEvent.getByToken(originalTracksToken_, originalTracksH);
 
   edm::Handle<std::vector<reco::Track>> tracksH;
-  iEvent.getByToken(tracksToken_, tracksH);
+  iEvent.getByToken(tracksToken_, tracksH);  
+  if(tracksH.isValid()){
+    for (auto tracks_iter = tracksH->begin(); tracks_iter != tracksH->end(); ++tracks_iter) {
+      reco::TransientTrack ttk = tt_builder.build(*tracks_iter);
+      std::pair<bool, Measurement1D> ttk_dist_mvtx = IPTools::absoluteTransverseImpactParameter(ttk, move_vertex_vtx);
+      if(ttk_dist_mvtx.second.significance() < 5){
+        nCloseTotalTracks++;
+        std::pair<bool, Measurement1D> ttk_dist_bs = IPTools::absoluteTransverseImpactParameter(ttk, fake_bs_vtx);
+        if(ttk_dist_bs.second.significance() > 4){
+          nCloseTotalTracks_IPsig++;
+        }
+      }
+    }
+  } 
 
   edm::Handle<std::vector<reco::Track>> movedTracksH;
   iEvent.getByToken(movedTracksToken_, movedTracksH);
 
   edm::Handle<std::vector<reco::Track>> survivedTracksH;
   iEvent.getByToken(survivedTracksToken_, survivedTracksH);
-  if(survivedTracksH.isValid()) nSurvivedTracks = survivedTracksH->size();
+  if(survivedTracksH.isValid()){
+    nSurvivedTracks = survivedTracksH->size();
+    for (auto surv_tracks_iter = survivedTracksH->begin(); surv_tracks_iter != survivedTracksH->end(); ++surv_tracks_iter) {
+      reco::TransientTrack ttk = tt_builder.build(*surv_tracks_iter);
+      std::pair<bool, Measurement1D> ttk_dist_bs = IPTools::absoluteTransverseImpactParameter(ttk, fake_bs_vtx);
+      if(ttk_dist_bs.second.significance() > 4){
+        nSurvivedTracks_IPsig++;
+      }
+    }
+  }
 
   edm::Handle<std::vector<reco::Track>> closeTracksH;
   iEvent.getByToken(closeTracksToken_, closeTracksH);
-  if(closeTracksH.isValid()) nCloseTracks = closeTracksH->size();
+  if(closeTracksH.isValid()){
+    nCloseBGTracks = closeTracksH->size();
+    for (auto close_tracks_iter = closeTracksH->begin(); close_tracks_iter != closeTracksH->end(); ++close_tracks_iter) {
+      reco::TransientTrack ttk = tt_builder.build(*close_tracks_iter);
+      std::pair<bool, Measurement1D> ttk_dist_bs = IPTools::absoluteTransverseImpactParameter(ttk, fake_bs_vtx);
+      if(ttk_dist_bs.second.significance() > 4){
+        nCloseBGTracks_IPsig++;
+    }
+  }
+  } 
   
   if(originalTracksH.isValid()){
     for (auto originalTracks_iter = originalTracksH->begin(); originalTracks_iter != originalTracksH->end(); ++originalTracks_iter) {
@@ -740,7 +794,12 @@ void VertexEffAnalyzer::beginJob() {
   objectTree->Branch("genWeight", &genWeight, "genWeight/D");
 
   objectTree->Branch("nSurvivedTracks", &nSurvivedTracks, "nSurvivedTracks/I");
-  objectTree->Branch("nCloseTracks", &nCloseTracks, "nCloseTracks/I");
+  objectTree->Branch("nCloseBGTracks", &nCloseBGTracks, "nCloseBGTracks/I");
+  objectTree->Branch("nCloseTotalTracks", &nCloseTotalTracks, "nCloseTotalTracks/I");
+  objectTree->Branch("nSurvivedTracks_IPsig", &nSurvivedTracks_IPsig, "nSurvivedTracks_IPsig/I");
+  objectTree->Branch("nCloseBGTracks_IPsig", &nCloseBGTracks_IPsig, "nCloseBGTracks_IPsig/I");
+  objectTree->Branch("nCloseTotalTracks_IPsig", &nCloseTotalTracks_IPsig, "nCloseTotalTracks_IPsig/I");
+
   objectTree->Branch("nPFJets", &nPFJets, "nPFJets/I");
 
   objectTree->Branch("nMovedTracks", &nMovedTracks, "nMovedTracks/I");

@@ -338,14 +338,6 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
   move_vertex->at(1) = 0;
   move_vertex->at(2) = 0;
 
-  //create a reco::Vertex to check for close tracks with IPTools
-  reco::Vertex::Point p(move_vertex->at(0), move_vertex->at(1), move_vertex->at(2));
-  // negligible error -> significance dominated by the track's own uncertainty
-  reco::Vertex::Error e;
-  e(0,0) = 1e-10;
-  e(1,1) = 1e-10;
-  e(2,2) = 1e-10;
-  reco::Vertex move_vertex_vtx(p, e);
 
   if (pass_presel && nPV > 0) {
 
@@ -395,6 +387,15 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
     //std::cout<<"Move x: "<<move.x()<<", move vertex x: "<<move_vertex->at(0)<<", PV x: "<<primary_vertices->at(0).x()<<std::endl;
   }
+
+  //create a reco::Vertex to check for close tracks with IPTools
+  reco::Vertex::Point p(move_vertex->at(0), move_vertex->at(1), move_vertex->at(2));
+  // negligible error -> significance dominated by the track's own uncertainty
+  reco::Vertex::Error e;
+  e(0,0) = 1e-10;
+  e(1,1) = 1e-10;
+  e(2,2) = 1e-10;
+  reco::Vertex move_vertex_vtx(p, e);
 
   //Copy input tracks that do not match selected jets
   //Move the matched tracks to the "move vertex"
@@ -497,6 +498,13 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
       output_tracks->push_back(new_tk);
     }
     else {
+      //Track quality requirements
+      float pt_min_cut = 1.0;
+      int  npixelHits_min_cut = 2;
+      int nstripHits_min_cut = 1;
+      int ntrackerLayers_min_cut = 5;
+      if ( !((tracks_iter->pt()>pt_min_cut) && (tracks_iter->hitPattern().numberOfValidPixelHits() > npixelHits_min_cut) && (tracks_iter->hitPattern().numberOfValidStripHits() > nstripHits_min_cut) && (tracks_iter->hitPattern().trackerLayersWithMeasurement() > ntrackerLayers_min_cut) && (fabs(tracks_iter->eta())<2.4)) ) continue;
+
       output_tracks->push_back(*tracks_iter);
 
       //If the track, by coindicence, is close to the move vertex, also consider for the TM reweighting

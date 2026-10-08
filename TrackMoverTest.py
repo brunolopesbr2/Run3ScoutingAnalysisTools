@@ -25,13 +25,13 @@ options.register('lumi',
                  "Integrated luminosity for weighting"
     )
 options.register('crossSection',
-                 26.49,
+                 1.0,
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.float,
                  "Cross Section for weighting"
     )
 options.register('isMC',
-                 True,
+                 False,
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.bool,
                  "If using MC or data"
