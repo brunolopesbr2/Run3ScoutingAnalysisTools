@@ -12,31 +12,38 @@ options.register('lumi',
                  "Integrated luminosity for weighting"
     )
 options.register('crossSection',
-                 1,
+                 1.0,
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.float,
                  "Cross Section for weighting"
     )
 options.register('isMC',
-                 True,
+                 False,
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.bool,
                  "If using MC or data"
     )
 
-options.register('doOnlineJEC',
-                 True,
+options.register('doJECUnc',
+                 False,
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.bool,
                  "Perform the online jet corrections and use the corrected jets."
     ) 
 
 options.register('hasReco',
-                 True,
+                 False,
                  VarParsing.VarParsing.multiplicity.singleton,
                  VarParsing.VarParsing.varType.bool,
                  "If the input has offline reconstruction (MC or ScoutingPFMonitor)"
     )
+
+options.register('debugTree',
+                 False,
+                 VarParsing.VarParsing.multiplicity.singleton,
+                 VarParsing.VarParsing.varType.bool,
+                 "Include extra track collections and PV information for debugging."
+)
 
 options.parseArguments()
 process.load("FWCore.MessageService.MessageLogger_cfi")
@@ -53,7 +60,7 @@ process.source = cms.Source("PoolSource",
         #MC test file
         #'/store/mc/RunIII2024Summer24MiniAOD/QCD-4Jets_Bin-HT-1000to1200_TuneCP5_13p6TeV_madgraphMLM-pythia8/MINIAODSIM/140X_mcRun3_2024_realistic_v26-v2/100000/00f7403b-49bf-4efd-9b8f-0398bd61d910.root'
         #Data test file
-        #'/store/data/Run2024D/ScoutingPFRun3/HLTSCOUT/v1/000/380/945/00000/cdf45723-07c4-4b41-9595-f368f2929369.root'
+        '/store/data/Run2024D/ScoutingPFRun3/HLTSCOUT/v1/000/380/945/00000/cdf45723-07c4-4b41-9595-f368f2929369.root'
         #PF monitor file
         #'/store/data/Run2024D/ScoutingPFMonitor/MINIAOD/PromptReco-v1/000/380/306/00000/70ec6086-72c5-4562-82a8-1f043e645d59.root'
         #Higgs test file
@@ -63,7 +70,8 @@ process.source = cms.Source("PoolSource",
         #local test file
         #'file:testScoutMonitorFile.root'
         #ScoutingPFMonitor test file
-        '/store/data/Run2024D/ScoutingPFMonitor/MINIAOD/PromptReco-v1/000/380/306/00000/7236c128-bb6e-4a16-aeda-2091c9544adc.root'
+        #'/store/data/Run2024D/ScoutingPFMonitor/MINIAOD/PromptReco-v1/000/380/306/00000/7236c128-bb6e-4a16-aeda-2091c9544adc.root'
+
     )
 )
 
@@ -81,36 +89,6 @@ else:
 
 process.load("EventFilter.L1TRawToDigi.gtStage2Digis_cfi")
 process.gtStage2Digis.InputLabel = cms.InputTag( "hltFEDSelectorL1" )
-
-if(options.doOnlineJEC):
-    pfjetsCorrectedTag = cms.InputTag("scoutingPFJetCorrected")
-else:
-    pfjetsCorrectedTag = cms.InputTag("hltScoutingPFPacker")
-
-if(options.hasReco):
-    offlineJetsTag = cms.InputTag("jecAppliedJetProducer","CorrectedAK4")
-else:
-    offlineJetsTag = cms.InputTag("")
-
-# update JEC
-if(options.isMC):
-    process.GlobalTag.toGet = cms.VPSet(
-    cms.PSet( # hlt AK4PFHLT latest
-        record = cms.string("JetCorrectionsRecord"),
-        tag = cms.string("JetCorrectorParametersCollection_Run3Winter24Digi_AK4PFHLT"),
-        label = cms.untracked.string("AK4PFHLT"),
-        connect = cms.string("frontier://FrontierProd/CMS_CONDITIONS")
-    )
-    )
-else:
-    process.GlobalTag.toGet = cms.VPSet(
-    cms.PSet( # hlt AK4PFHLT latest
-        record = cms.string("JetCorrectionsRecord"),
-        tag = cms.string("JetCorrectorParametersCollection_AK4PFHLT_hlt_v1"),
-        label = cms.untracked.string("AK4PFHLT"),
-        connect = cms.string("frontier://FrontierProd/CMS_CONDITIONS")
-    )
-    )
 
 isDataBool = cms.bool(not options.isMC)
 if(options.isMC):
@@ -131,45 +109,21 @@ process.scoutingToRecoJets = cms.EDProducer('Run3ScoutingPFJetToRecoPFJetProduce
                                      scoutingPFJet = cms.InputTag("hltScoutingPFPacker")
                                      )
 
-#Patr 2: Jet corrector
-process.hltAK4PFFastJetCorrector = cms.EDProducer("L1FastjetCorrectorProducer",
-    algorithm = cms.string("AK4PFHLT"),
-    level = cms.string("L1FastJet"),
-    srcRho = cms.InputTag("hltScoutingPFPacker", "rho")
-)
 
-process.hltAK4PFRelativeCorrector = cms.EDProducer( "LXXXCorrectorProducer",
-    algorithm = cms.string( "AK4PFHLT" ),
-    level = cms.string( "L2Relative" )
-)
+#Part 2: Correction from JSON
+if(options.isMC):
+    eraToJEC = cms.string("")
+else:
+    eraToJEC = cms.string("Era2024ScoutingAll")
 
-process.hltAK4PFAbsoluteCorrector = cms.EDProducer( "LXXXCorrectorProducer",
-    algorithm = cms.string( "AK4PFHLT" ),
-    level = cms.string( "L3Absolute" )
-)
-
-process.hltAK4PFResidualCorrector = cms.EDProducer( "LXXXCorrectorProducer",
-    algorithm = cms.string( "AK4PFHLT" ),
-    level = cms.string( "L2L3Residual" )
-)
-
-process.hltAK4PFCorrector = cms.EDProducer("ChainedJetCorrectorProducer",
-    correctors = cms.VInputTag(["hltAK4PFFastJetCorrector", "hltAK4PFRelativeCorrector", "hltAK4PFAbsoluteCorrector", "hltAK4PFResidualCorrector" ])
-)
-process.scoutingPFJetCorrected = cms.EDProducer("CorrectedPFJetProducer",
-    correctors = cms.VInputTag(["hltAK4PFCorrector"]),
-    src = cms.InputTag("scoutingToRecoJets"),
-)
-
-#And the offline corrector
 process.jecAppliedJetProducer = cms.EDProducer(
     "JecAppliedJetProducer",
     isDebug = cms.bool(False),  # set True to dump [JERC DEBUG] logs
 
     Jets = cms.PSet(
-        srcAK4 = cms.InputTag("slimmedJets"),          # pat::JetCollection
-        rho    = cms.InputTag("fixedGridRhoFastjetAll"),
-        Year   = cms.string("2024"),
+        srcAK4 = cms.InputTag("scoutingToRecoJets"),          # pat::JetCollection
+        rho    = cms.InputTag("hltScoutingPFPacker", "rho"),
+        Year   = cms.string("2024Scouting"),
         IsData = isDataBool,
 
         # Optional era ("" => None)
@@ -194,89 +148,22 @@ process.jecAppliedJetProducer = cms.EDProducer(
         JerToolConfig = cms.FileInPath("Run3ScoutingAnalysisTools/OfflineJetCorrector/data/jer_smear.json.gz"),
     ),
 )
-#Part 3: L1 unpacker:
-process.GlobalParametersRcdSource = cms.ESSource( "EmptyESSource",
-    recordName = cms.string( "L1TGlobalParametersRcd" ),
-    iovIsRunNotTime = cms.bool( True ),
-    firstValid = cms.vuint32( 1 )
-)
-process.GlobalParameters = cms.ESProducer( "StableParametersTrivialProducer",
-    TotalBxInEvent = cms.int32( 5 ),
-    NumberPhysTriggers = cms.uint32( 512 ),
-    NumberL1Muon = cms.uint32( 8 ),
-    NumberL1EGamma = cms.uint32( 12 ),
-    NumberL1Jet = cms.uint32( 12 ),
-    NumberL1Tau = cms.uint32( 12 ),
-    NumberChips = cms.uint32( 1 ),
-    PinsOnChip = cms.uint32( 512 ),
-    OrderOfChip = cms.vint32( 1 ),
-    NumberL1IsoEG = cms.uint32( 4 ),
-    NumberL1JetCounts = cms.uint32( 12 ),
-    UnitLength = cms.int32( 8 ),
-    NumberL1ForJet = cms.uint32( 4 ),
-    IfCaloEtaNumberBits = cms.uint32( 4 ),
-    IfMuEtaNumberBits = cms.uint32( 6 ),
-    NumberL1TauJet = cms.uint32( 4 ),
-    NumberL1Mu = cms.uint32( 4 ),
-    NumberConditionChips = cms.uint32( 1 ),
-    NumberPsbBoards = cms.int32( 7 ),
-    NumberL1CenJet = cms.uint32( 4 ),
-    PinsOnConditionChip = cms.uint32( 512 ),
-    NumberL1NoIsoEG = cms.uint32( 4 ),
-    NumberTechnicalTriggers = cms.uint32( 64 ),
-    NumberPhysTriggersExtended = cms.uint32( 64 ),
-    WordLength = cms.int32( 64 ),
-    OrderConditionChip = cms.vint32( 1 ),
-    appendToDataLabel = cms.string( "" )
-)
-process.hltGtStage2Digis = cms.EDProducer( "L1TRawToDigi",
-    FedIds = cms.vint32( 1404 ),
-    Setup = cms.string( "stage2::GTSetup" ),
-    FWId = cms.uint32( 0 ),
-    DmxFWId = cms.uint32( 0 ),
-    FWOverride = cms.bool( False ),
-    TMTCheck = cms.bool( True ),
-    CTP7 = cms.untracked.bool( False ),
-    MTF7 = cms.untracked.bool( False ),
-    InputLabel = cms.InputTag( "hltFEDSelectorL1" ),
-    lenSlinkHeader = cms.untracked.int32( 8 ),
-    lenSlinkTrailer = cms.untracked.int32( 8 ),
-    lenAMCHeader = cms.untracked.int32( 8 ),
-    lenAMCTrailer = cms.untracked.int32( 0 ),
-    lenAMC13Header = cms.untracked.int32( 8 ),
-    lenAMC13Trailer = cms.untracked.int32( 8 ),
-    debug = cms.untracked.bool( False ),
-    MinFeds = cms.uint32( 0 )
-)
-process.hltGtStage2ObjectMap = cms.EDProducer( "L1TGlobalProducer",
-    MuonInputTag = cms.InputTag( 'hltGtStage2Digis','Muon' ),
-    MuonShowerInputTag = cms.InputTag( 'hltGtStage2Digis','MuonShower' ),
-    EGammaInputTag = cms.InputTag( 'hltGtStage2Digis','EGamma' ),
-    TauInputTag = cms.InputTag( 'hltGtStage2Digis','Tau' ),
-    JetInputTag = cms.InputTag( 'hltGtStage2Digis','Jet' ),
-    EtSumInputTag = cms.InputTag( 'hltGtStage2Digis','EtSum' ),
-    EtSumZdcInputTag = cms.InputTag( 'hltGtStage2Digis','EtSumZDC' ),
-    CICADAInputTag = cms.InputTag( 'hltGtStage2Digis','CICADAScore' ),
-    ExtInputTag = cms.InputTag( "hltGtStage2Digis" ),
-    AlgoBlkInputTag = cms.InputTag( "hltGtStage2Digis" ),
-    GetPrescaleColumnFromData = cms.bool( False ),
-    AlgorithmTriggersUnprescaled = cms.bool( True ),
-    RequireMenuToMatchAlgoBlkInput = cms.bool( True ),
-    AlgorithmTriggersUnmasked = cms.bool( True ),
-    useMuonShowers = cms.bool( True ),
-    resetPSCountersEachLumiSec = cms.bool( True ),
-    semiRandomInitialPSCounters = cms.bool( False ),
-    ProduceL1GtDaqRecord = cms.bool( True ),
-    ProduceL1GtObjectMapRecord = cms.bool( True ),
-    EmulateBxInEvent = cms.int32( 1 ),
-    L1DataBxInEvent = cms.int32( 5 ),
-    AlternativeNrBxBoardDaq = cms.uint32( 0 ),
-    BstLengthBytes = cms.int32( -1 ),
-    PrescaleSet = cms.uint32( 1 ),
-    Verbosity = cms.untracked.int32( 0 ),
-    PrintL1Menu = cms.untracked.bool( False ),
-    TriggerMenuLuminosity = cms.string( "startup" )
-)
+if(options.doJECUnc and options.isMC):
+    process.jecAppliedJetProducerJECup = process.jecAppliedJetProducer.clone(
+        Jets = dict(
+            SystKind    = cms.string("JES"),
+            JesSystName = cms.string("CMS_scale_j_Total"),
+            JesSystVar  = cms.string("Up"),
+        )
+    )
+    process.jecAppliedJetProducerJECdown = process.jecAppliedJetProducer.clone(
+        Jets = dict(
+            SystKind    = cms.string("JES"),
+            JesSystName = cms.string("CMS_scale_j_Total"),
+            JesSystVar  = cms.string("Down"),
+        )
+    )
+
 
 #Part 4: analyzer
 process.triggerEffs = cms.EDAnalyzer('TriggerEffs',
@@ -291,9 +178,8 @@ process.triggerEffs = cms.EDAnalyzer('TriggerEffs',
                                      luminosity = cms.double(options.lumi), #2024 luminosity (fb-1)
                                      crossSection = cms.double(options.crossSection), # cross section in fb
                                      l1Seeds           = cms.vstring(L1Info),
-                                     l1Et = cms.InputTag("caloStage2Digis", "EtSum"),
-                                     pfjets            = pfjetsCorrectedTag,
-                                     offlineJets = offlineJetsTag,
+                                     l1Et = cms.InputTag("gtStage2Digis", "EtSum"),
+                                     pfjets            = cms.InputTag("jecAppliedJetProducer","CorrectedAK4"),
                                      generatorName = cms.InputTag('generator'),
                                      truePileup        = truePileupTag,
                                      scoutingMuon = cms.InputTag('hltScoutingMuonPackerNoVtx'), #remove the NoVtx if 2023 data
@@ -306,8 +192,17 @@ process.triggerEffs = cms.EDAnalyzer('TriggerEffs',
                                      muon_muonHits = cms.int32(0),
                                      muon_matchedStation = cms.int32(1),
                                      matchingTolerance = cms.double(0.1),
-                                     muon_iso_max = cms.double(0.10)
+                                     muon_iso_max = cms.double(0.10),
+                                     debugTree = cms.bool(options.debugTree)
 )
+
+if(options.doJECUnc and options.isMC):
+    process.triggerEffsJECup = process.triggerEffs.clone(
+        pfjets = cms.InputTag("jecAppliedJetProducerJECup", "CorrectedAK4")
+    )
+    process.triggerEffsJECdown = process.triggerEffs.clone(
+        pfjets = cms.InputTag("jecAppliedJetProducerJECdown", "CorrectedAK4")
+    )
 
 process.TFileService = cms.Service("TFileService",
                                    fileName = cms.string("tree_corrected.root")
@@ -315,24 +210,24 @@ process.TFileService = cms.Service("TFileService",
 # Usually it is better to put producers on a task instead of a path
 # but paths also work.
 
-if(options.doOnlineJEC):
+if(options.doJECUnc and options.isMC):
     process.p = cms.Path(
         process.rhoFilter *
         process.scoutingToRecoJets *
-        process.hltAK4PFFastJetCorrector *
-        process.hltAK4PFRelativeCorrector *
-        process.hltAK4PFAbsoluteCorrector *
-        process.hltAK4PFResidualCorrector *
-        process.hltAK4PFCorrector *
-        process.scoutingPFJetCorrected *
         process.jecAppliedJetProducer *
-        process.triggerEffs
+        process.jecAppliedJetProducerJECup *
+        process.jecAppliedJetProducerJECdown *
+        process.gtStage2Digis *
+        process.triggerEffs *
+        process.triggerEffsJECup *
+        process.triggerEffsJECdown
     )
 else:
     process.p = cms.Path(
         process.rhoFilter *
         process.scoutingToRecoJets *
         process.jecAppliedJetProducer *
+        process.gtStage2Digis *
         process.triggerEffs
     )
 
