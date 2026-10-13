@@ -509,7 +509,7 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
 
       //If the track, by coindicence, is close to the move vertex, also consider for the TM reweighting
       reco::TransientTrack ttk = tt_builder.build(*tracks_iter);
-      std::pair<bool, Measurement1D> ttk_dist = IPTools::absoluteTransverseImpactParameter(ttk, move_vertex_vtx);
+      std::pair<bool, Measurement1D> ttk_dist = IPTools::absoluteImpactParameter3D(ttk, move_vertex_vtx);
       float IP_sig = ttk_dist.second.significance();
       if (IP_sig < 5){
         close_tracks->push_back(*tracks_iter);

@@ -559,13 +559,7 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   }
   else{
     std::cout<<"Warning: invalid move vertex"<<std::endl;
-    moveVertex_x = 0;
-    moveVertex_y = 0;
-    moveVertex_z = 0;
-    moveVertex_dBV = 0;
-    moveVertex_dBV3D = 0;
-    moveVertex_dPVV = 0;
-    moveVertex_dPVV3D = 0;
+    return;
   }
 
   matchedVertex = false;
@@ -591,7 +585,7 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
       vertices_y.push_back(vertex_iter->y());
       vertices_z.push_back(vertex_iter->z());
 
-      vertexDist = TMath::Sqrt(pow(vertex_iter->x()-moveVertexH->at(0), 2) + pow(vertex_iter->y()-moveVertexH->at(1), 2));
+      vertexDist = TMath::Sqrt(pow(vertex_iter->x()-moveVertexH->at(0), 2) + pow(vertex_iter->y()-moveVertexH->at(1), 2) + pow(vertex_iter->z()-moveVertexH->at(2), 2));
 
       if (vertexDist < matchVertexDistance){
         matchedVertex = true;
@@ -648,7 +642,7 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
   if(tracksH.isValid()){
     for (auto tracks_iter = tracksH->begin(); tracks_iter != tracksH->end(); ++tracks_iter) {
       reco::TransientTrack ttk = tt_builder.build(*tracks_iter);
-      std::pair<bool, Measurement1D> ttk_dist_mvtx = IPTools::absoluteTransverseImpactParameter(ttk, move_vertex_vtx);
+      std::pair<bool, Measurement1D> ttk_dist_mvtx = IPTools::absoluteImpactParameter3D(ttk, move_vertex_vtx);
       if(ttk_dist_mvtx.second.significance() < 5){
         nCloseTotalTracks++;
         std::pair<bool, Measurement1D> ttk_dist_bs = IPTools::absoluteTransverseImpactParameter(ttk, fake_bs_vtx);
