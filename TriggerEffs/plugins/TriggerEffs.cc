@@ -115,6 +115,7 @@ private:
 
   // ----------member data ---------------------------
   const edm::EDGetTokenT<std::vector<reco::PFJet> >  pfjetsToken;
+  int jetIDMode;        // 0 = no ID, 1 = full Tight(LepVeto) ID, 2 = noise-only ID (displaced friendly)
   const edm::EDGetTokenT<GenEventInfoProduct> GeneratorToken_;
   const edm::EDGetTokenT<edm::TriggerResults> triggerResultsToken;
 
@@ -140,6 +141,11 @@ private:
   TTree* objectTree;
 
   int nPFJets;
+
+  int nJets_pt;         // pass pT/eta
+  int nJets_veto;       // ... and veto map
+  int nJets_ID;         // ... and jet ID
+  int nJets_final;      // ... and muon cleaning (= jets in HT)
 
   int nPFJets_corrected;
   float hltHT;
@@ -319,6 +325,7 @@ bool matchesPF(int ID, double tolerance, Run3ScoutingMuon const& muonTrack,  edm
 //
 TriggerEffs::TriggerEffs(const edm::ParameterSet& iConfig):
     pfjetsToken(consumes<std::vector<reco::PFJet> >(iConfig.getParameter<edm::InputTag>("pfjets"))),
+    jetIDMode(iConfig.existsAs<int>("jetIDMode") ? iConfig.getParameter<int>("jetIDMode") : 1),
     GeneratorToken_(consumes(iConfig.getParameter<edm::InputTag>("generatorName"))),
     triggerResultsToken(consumes<edm::TriggerResults>(iConfig.getParameter<edm::InputTag>("triggerresults"))),
     luminosity(iConfig.existsAs<double>("luminosity") ? iConfig.getParameter<double>  ("luminosity") : 1.0),
@@ -380,6 +387,7 @@ void TriggerEffs::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   PFCands_isCharged->clear();
 
   if(isMC){
+    truePU = -1; 
     edm::Handle<std::vector<PileupSummaryInfo>> pileup;
     iEvent.getByToken(truePileupToken, pileup);
     std::vector<PileupSummaryInfo>::const_iterator pileupIter;
@@ -407,6 +415,7 @@ void TriggerEffs::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
 
   //L1 HT
+  l1HT = 0;
   edm::Handle<BXVector<l1t::EtSum>> etSums;
   iEvent.getByToken(L1etSum, etSums);
   if (etSums.isValid()) {
@@ -541,52 +550,77 @@ void TriggerEffs::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
   std::vector<reco::PFJet> selected_jets;
 
+  nJets_pt = 0;
+  nJets_veto = 0;
+  nJets_ID = 0;
+  nJets_final = 0;
+
   if(pfjetsH.isValid()){
     for (auto jets_iter = pfjetsH->begin(); jets_iter != pfjetsH->end(); ++jets_iter) {
       if(jets_iter->pt() > 30 && abs(jets_iter->eta()) < 2.5){ //same requirements as L1_HTTer
-        binX = jetVetoMap_->GetXaxis()->FindBin(jets_iter->eta());
-        binY = jetVetoMap_->GetYaxis()->FindBin(jets_iter->phi());
-        maskBit = jetVetoMap_->GetBinContent(binX, binY);
-        float energy = jets_iter->chargedHadronEnergy() + jets_iter->neutralHadronEnergy() + jets_iter->muonEnergy() + jets_iter->electronEnergy() + jets_iter->photonEnergy() + jets_iter->HFEMEnergy();
+        nJets_pt++;
 
-        if(energy > 0){
-          //float Jet_chHEF = jets_iter->chargedHadronEnergy()/energy;
-          float Jet_neHEF = jets_iter->neutralHadronEnergy()/energy;
-          float Jet_muEF = jets_iter->muonEnergy()/energy;
-          float Jet_chEmEF = jets_iter->electronEnergy()/energy;
-          float Jet_neEmEF = (jets_iter->photonEnergy()+jets_iter->HFEMEnergy())/energy;
+        // jet veto map
+        const int   vetoBinX = jetVetoMap_->GetXaxis()->FindBin(jets_iter->eta());
+        const int   vetoBinY = jetVetoMap_->GetYaxis()->FindBin(jets_iter->phi());
+        const float vetoBit  = jetVetoMap_->GetBinContent(vetoBinX, vetoBinY);
 
-          int Jet_chMultiplicity = jets_iter->chargedHadronMultiplicity()+jets_iter->electronMultiplicity()+jets_iter->muonMultiplicity();
-          int Jet_neMultiplicity = jets_iter->neutralHadronMultiplicity()+jets_iter->photonMultiplicity()+jets_iter->HFHadronMultiplicity()+jets_iter->HFEMMultiplicity();
+        if(vetoBit != 0) continue;
+        nJets_veto++;
 
-          Jet_passJetIdTight = (Jet_neHEF < 0.99) && (Jet_neEmEF < 0.90) && (Jet_chMultiplicity+Jet_neMultiplicity > 1) && (Jet_muEF < 0.80) && (Jet_chMultiplicity > 0);
+        bool passID = true;
 
-          if((maskBit==0) && Jet_passJetIdTight){
-            bool dR20 = true;
-            
-            for (auto muon : selectedMuons) {
-                dEta_jet_mu = jets_iter->eta() - muon->eta();
-                dPhi_jet_mu = deltaPhi(jets_iter->phi(), muon->phi());
-                dR_jet_mu = sqrt(pow(dEta_jet_mu, 2) + pow(dPhi_jet_mu, 2));
-                if(dR_jet_mu < 0.20){
-                  dR20 = false;
-                } 
-            }  
-            if(dR20){
-              hltHT = hltHT + jets_iter->pt();
-              onlineJet_pt->push_back(jets_iter->pt());
-              onlineJet_eta->push_back(jets_iter->eta());
-              onlineJet_phi->push_back(jets_iter->phi());
+        if(jetIDMode !=0){
+          const float jetEnergy = jets_iter->chargedHadronEnergy() + jets_iter->neutralHadronEnergy()
+                      + jets_iter->muonEnergy() + jets_iter->electronEnergy()
+                      + jets_iter->photonEnergy() + jets_iter->HFEMEnergy();
 
-              hltNeutralHT = hltNeutralHT + jets_iter->neutralHadronEnergy() + jets_iter->photonEnergy();
-              hltChargedHT = hltChargedHT + jets_iter->chargedHadronEnergy() + jets_iter->muonEnergy() + jets_iter->electronEnergy();
-              hltForwardHT = hltForwardHT + jets_iter->HFEMEnergy() + jets_iter->HFHadronEnergy();
+          if(jetEnergy > 0){
+            const float neHEF  = jets_iter->neutralHadronEnergy() / jetEnergy;
+            const float muEF   = jets_iter->muonEnergy() / jetEnergy;
+            const float neEmEF = (jets_iter->photonEnergy() + jets_iter->HFEMEnergy()) / jetEnergy;
+            const int chMult = jets_iter->chargedHadronMultiplicity() + jets_iter->electronMultiplicity() + jets_iter->muonMultiplicity();
+            const int neMult = jets_iter->neutralHadronMultiplicity() + jets_iter->photonMultiplicity() + jets_iter->HFHadronMultiplicity() + jets_iter->HFEMMultiplicity();
 
-              selected_jets.push_back(*jets_iter);
-
+            if(jetIDMode == 1){ // default jet tight ID
+              passID = (neHEF < 0.99) && (neEmEF < 0.90) && (chMult + neMult > 1) && (muEF < 0.80) && (chMult > 0);
+            }
+            else{ // mode 2: only reject obvious noise / lepton-like jets, no charged or neutral-fraction requirement
+              passID = (chMult + neMult > 1) && (muEF < 0.80);
             }
           }
+          else{
+            passID = false;  // jet with zero energy
+          }
         }
+
+        if(!passID) continue;
+        nJets_ID++;
+
+        bool muonClean = true;
+        for (auto muon : selectedMuons) {
+            dEta_jet_mu = jets_iter->eta() - muon->eta();
+            dPhi_jet_mu = deltaPhi(jets_iter->phi(), muon->phi());
+            dR_jet_mu = sqrt(pow(dEta_jet_mu, 2) + pow(dPhi_jet_mu, 2));
+            if(dR_jet_mu < 0.20){
+              muonClean = false;
+            } 
+        }  
+
+        if(!muonClean) continue;
+        nJets_final++;
+
+        hltHT = hltHT + jets_iter->pt();
+        onlineJet_pt->push_back(jets_iter->pt());
+        onlineJet_eta->push_back(jets_iter->eta());
+        onlineJet_phi->push_back(jets_iter->phi());
+
+        hltNeutralHT = hltNeutralHT + jets_iter->neutralHadronEnergy() + jets_iter->photonEnergy();
+        hltChargedHT = hltChargedHT + jets_iter->chargedHadronEnergy() + jets_iter->muonEnergy() + jets_iter->electronEnergy();
+        hltForwardHT = hltForwardHT + jets_iter->HFEMEnergy() + jets_iter->HFHadronEnergy();
+
+        selected_jets.push_back(*jets_iter);
+
       }
     }
   }
@@ -682,6 +716,11 @@ void TriggerEffs::beginJob() {
 
   objectTree->Branch("nMuons",&nMuons, "nMuons/I" );
   objectTree->Branch("nSelectedMuons",&nSelectedMuons, "nSelectedMuons/I" );
+
+  objectTree->Branch("nJets_pt",&nJets_pt, "nJets_pt/I" );
+  objectTree->Branch("nJets_veto",&nJets_veto, "nJets_veto/I" );
+  objectTree->Branch("nJets_ID",&nJets_ID, "nJets_ID/I" );
+  objectTree->Branch("nJets_final",&nJets_final, "nJets_final/I" );
 
   //require one muon that satisfy the other cuts, leave leading muon pT free
   objectTree->Branch("mu1s_pt",&mu1s_pt, "mu1s_pt/D" );
