@@ -505,7 +505,8 @@ process.scoutingTree = cms.EDAnalyzer('ScoutingTreeMakerRun3',
                                       pt_min_cut = cms.double(pt_min_val),
                                       npixelHits_min_cut = cms.int32(npixelHits_min_val),
                                       nstripHits_min_cut = cms.int32(nstripHits_min_val),
-                                      ntrackerLayers_min_cut = cms.int32(ntrackerLayers_min_val)
+                                      ntrackerLayers_min_cut = cms.int32(ntrackerLayers_min_val),
+                                      matchVertexDistance = cms.double(0.02)
                                       )
 
 if(options.isMC and options.doJECUnc):

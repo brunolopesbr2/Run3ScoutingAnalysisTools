@@ -753,8 +753,13 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
             allTracks.push_back(&(*it));
     }
     if (closeTracksH.isValid()) {
-        for (auto it = closeTracksH->begin(); it != closeTracksH->end(); ++it)
-            allTracks.push_back(&(*it));
+      for (auto it = closeTracksH->begin(); it != closeTracksH->end(); ++it){
+	reco::TransientTrack ttk = tt_builder.build(*it);
+	std::pair<bool, Measurement1D> ttk_dist_bs = IPTools::absoluteTransverseImpactParameter(ttk, fake_bs_vtx);
+	if(ttk_dist_bs.second.significance() > 4){
+	  allTracks.push_back(&(*it));
+	}
+      }
     }
 
     for (auto trk1 : allTracks) {

@@ -229,6 +229,7 @@ private:
   const int npixelHits_min_cut;
   const int nstripHits_min_cut;
   const int ntrackerLayers_min_cut;
+  const float matchVertexDistance;
   
   std::vector<double> triggerNominal;
   std::vector<double> triggerUp;
@@ -484,6 +485,16 @@ private:
   std::vector<double>* genVert_deltaR_TM;
   std::vector<double>* genVert_dBV2D_TM;
   std::vector<double>* genVert_dBV3D_TM;
+  std::vector<double>* genVert_nCloseSeedTracks3D;
+  std::vector<double>* genVert_nCloseSeedTracks2D;
+  std::vector<int>* genVert_nMatches;
+  std::vector<int>* genVertMatch_genIdx;
+  std::vector<float>* genVertMatch_dist;
+  std::vector<float>* genVertMatch_dBV;
+  std::vector<float>* genVertMatch_dBVErr;
+  std::vector<float>* genVertMatch_chi2;
+  std::vector<float>* genVertMatch_cosT;
+  std::vector<int>* genVertMatch_nTracks;
 
   std::vector<double>* genVert1_daughter_pt;
   std::vector<double>* genVert1_daughter_eta;
@@ -788,7 +799,8 @@ ScoutingTreeMakerRun3::ScoutingTreeMakerRun3(const edm::ParameterSet& iConfig):
   pt_min_cut(iConfig.getParameter<double>("pt_min_cut")),
   npixelHits_min_cut(iConfig.getParameter<int>("npixelHits_min_cut")),
   nstripHits_min_cut(iConfig.getParameter<int>("nstripHits_min_cut")),
-  ntrackerLayers_min_cut(iConfig.getParameter<int>("ntrackerLayers_min_cut"))
+  ntrackerLayers_min_cut(iConfig.getParameter<int>("ntrackerLayers_min_cut")),
+  matchVertexDistance(iConfig.getParameter<double>("matchVertexDistance"))
 {
     usesResource("TFileService");
     if (doTrigger) {
@@ -959,6 +971,16 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
   genVert_deltaR_TM->clear();
   genVert_dBV2D_TM->clear();
   genVert_dBV3D_TM->clear();
+  genVert_nCloseSeedTracks3D->clear();
+  genVert_nCloseSeedTracks2D->clear();
+  genVert_nMatches->clear();
+  genVertMatch_genIdx->clear();
+  genVertMatch_dist->clear();
+  genVertMatch_dBV->clear();
+  genVertMatch_dBVErr->clear();
+  genVertMatch_chi2->clear();
+  genVertMatch_cosT->clear();
+  genVertMatch_nTracks->clear(); 
   
   eventId = iEvent.id().event();
   runNumber = iEvent.id().run();
@@ -1488,110 +1510,6 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
     }
   }
 
-  std::vector<reco::GenParticle>::const_iterator genParticleIter;
-  edm::Handle<std::vector<reco::GenParticle>> genParticle_handle;
-  std::vector<GlobalPoint> genVertices;
-  
-if(isMC && doTMTree){
-  std::vector<GlobalPoint> genVertices_TM;
-  iEvent.getByToken(GenParticleToken_,genParticle_handle);
-  //get the 2 GEN vertices
-  int genVert_idx = 0;
-  genVert1_daughter_pt->clear();
-  genVert1_daughter_eta->clear();
-  genVert1_daughter_phi->clear();
-  genVert2_daughter_pt->clear();
-  genVert2_daughter_eta->clear();
-  genVert2_daughter_phi->clear();
-  for(genParticleIter = genParticle_handle->begin(); genParticleIter != genParticle_handle->end(); ++genParticleIter){
-    // look for the LLP directly
-    if(abs(genParticleIter->pdgId()) != LLP_pdgId) continue;
-    if(genParticleIter->numberOfDaughters() < 2) continue;
-    if(!genParticleIter->daughter(0) || !genParticleIter->daughter(1)) continue;
-
-    // require explicitly the LLP decays to be quarks, filters spurirous R-hadron vertices
-    // except for the StealthSUSY case, where the LLP singlino decays to singlet + gravitino
-    if(LLP_pdgId == 5000002){
-      if(abs(genParticleIter->daughter(0)->pdgId()) != 21 && //StealthSYY: gluons
-          abs(genParticleIter->daughter(0)->pdgId()) != 5) continue; //StealthSHH: b-jets
-      if(abs(genParticleIter->daughter(1)->pdgId()) != 21 &&
-          abs(genParticleIter->daughter(1)->pdgId()) != 5) continue;
-    }
-    else{ //RPV SUSY and Exo Higgs: LLP decays to quarks
-      if(abs(genParticleIter->daughter(0)->pdgId()) < 1 || 
-        abs(genParticleIter->daughter(0)->pdgId()) > 6) continue;
-      if(abs(genParticleIter->daughter(1)->pdgId()) < 1 || 
-        abs(genParticleIter->daughter(1)->pdgId()) > 6) continue;
-    }
-
-    if( abs(genParticleIter->daughter(0)->eta()) > 2.4 || abs(genParticleIter->daughter(1)->eta()) > 2.4) continue;
-
-    if(genVert_idx == 0){
-      genVert1_daughter_pt->push_back(genParticleIter->daughter(0)->pt());
-      genVert1_daughter_pt->push_back(genParticleIter->daughter(1)->pt());
-      genVert1_daughter_eta->push_back(genParticleIter->daughter(0)->eta());
-      genVert1_daughter_eta->push_back(genParticleIter->daughter(1)->eta());
-      genVert1_daughter_phi->push_back(genParticleIter->daughter(0)->phi());
-      genVert1_daughter_phi->push_back(genParticleIter->daughter(1)->phi());
-    }
-    if(genVert_idx == 1){
-      genVert2_daughter_pt->push_back(genParticleIter->daughter(0)->pt());
-      genVert2_daughter_pt->push_back(genParticleIter->daughter(1)->pt());
-      genVert2_daughter_eta->push_back(genParticleIter->daughter(0)->eta());
-      genVert2_daughter_eta->push_back(genParticleIter->daughter(1)->eta());
-      genVert2_daughter_phi->push_back(genParticleIter->daughter(0)->phi());
-      genVert2_daughter_phi->push_back(genParticleIter->daughter(1)->phi());
-    }
-    genVert_idx++;
-
-    // displaced vertex position comes from the daughter
-    GlobalPoint genVertex(genParticleIter->daughter(0)->vx(),
-                          genParticleIter->daughter(0)->vy(),
-                          genParticleIter->daughter(0)->vz());
-
-    genVertices_TM.push_back(genVertex);
-
-    double px = genParticleIter->daughter(0)->px() + genParticleIter->daughter(1)->px();
-    double py = genParticleIter->daughter(0)->py() + genParticleIter->daughter(1)->py();
-    double pz = genParticleIter->daughter(0)->pz() + genParticleIter->daughter(1)->pz();
-
-    genVert_netPt_TM->push_back(sqrt(px*px + py*py));
-    genVert_netP_TM->push_back(sqrt(px*px + py*py + pz*pz));
-
-    genVert_sumPt_TM->push_back(genParticleIter->daughter(0)->pt() + genParticleIter->daughter(1)->pt());
-    genVert_deltaR_TM->push_back(reco::deltaR(genParticleIter->daughter(0)->eta(), genParticleIter->daughter(0)->phi(), genParticleIter->daughter(1)->eta(), genParticleIter->daughter(1)->phi()));
-
-    Vertex leading_pv = primaryVertices->at(0);
-    float dx_BV = genVertex.x() - leading_pv.x();
-    float dy_BV = genVertex.y() - leading_pv.y();
-    float dz_BV = genVertex.z() - leading_pv.z();
-
-    //float dx_BV = genVertex.x() - fake_bs_vtx.x();
-    //float dy_BV = genVertex.y() - fake_bs_vtx.y();
-    //float dz_BV = genVertex.z() - fake_bs_vtx.z();
-    //genVert_dBV2D_TM->push_back(sqrt(dx_BV*dx_BV + dy_BV*dy_BV));
-    //genVert_dBV3D_TM->push_back(sqrt(dx_BV*dx_BV + dy_BV*dy_BV + dz_BV*dz_BV));
-
-    genVert_dBV2D_TM->push_back(sqrt(dx_BV*dx_BV + dy_BV*dy_BV));
-    genVert_dBV3D_TM->push_back(sqrt(dx_BV*dx_BV + dy_BV*dy_BV + dz_BV*dz_BV));
-  }
-
-  genVert_dVV_TM = 0;
-  genVert_dPhiVV_TM = 0;
-  if(genVertices_TM.size() == 2 && genVert_idx == 2){ //require 2 gen vertices with both daughters within eta 2.4
-    genVert_dVV_TM = sqrt( std::pow(genVertices_TM.at(0).x() - genVertices_TM.at(1).x(), 2) +
-                        std::pow(genVertices_TM.at(0).y() - genVertices_TM.at(1).y(), 2) + 
-                        std::pow(genVertices_TM.at(0).z() - genVertices_TM.at(1).z(), 2) );
-    genVert_dPhiVV_TM = reco::deltaPhi(
-        static_cast<double>(genVertices_TM.at(0).phi()),
-        static_cast<double>(genVertices_TM.at(1).phi())
-    );
-  }
-  nPV_TM = primaryVertices->size(); //Get the nPV also for events with no vertices
-  tmTree->Fill();
-}
-
-  
   //Get the vertices
   Handle<vector<Vertex> > verticesH;
   iEvent.getByToken(verticesToken, verticesH);
@@ -1610,6 +1528,180 @@ if(isMC && doTMTree){
       if (ntk_t > required_ntk - 1) vertices_ntk.push_back(v);
       t++;
     }
+  }
+  
+  std::vector<reco::GenParticle>::const_iterator genParticleIter;
+  edm::Handle<std::vector<reco::GenParticle>> genParticle_handle;
+  std::vector<GlobalPoint> genVertices;
+
+  if(isMC && doTMTree){
+    std::vector<GlobalPoint> genVertices_TM;
+    iEvent.getByToken(GenParticleToken_,genParticle_handle);
+    //get the 2 GEN vertices
+    int genVert_idx = 0;
+    genVert1_daughter_pt->clear();
+    genVert1_daughter_eta->clear();
+    genVert1_daughter_phi->clear();
+    genVert2_daughter_pt->clear();
+    genVert2_daughter_eta->clear();
+    genVert2_daughter_phi->clear();
+    for(genParticleIter = genParticle_handle->begin(); genParticleIter != genParticle_handle->end(); ++genParticleIter){
+      // look for the LLP directly
+      if(abs(genParticleIter->pdgId()) != LLP_pdgId) continue;
+      if(genParticleIter->numberOfDaughters() < 2) continue;
+      if(!genParticleIter->daughter(0) || !genParticleIter->daughter(1)) continue;
+      
+      // require explicitly the LLP decays to be quarks, filters spurirous R-hadron vertices
+      // except for the StealthSUSY case, where the LLP singlino decays to singlet + gravitino
+      if(LLP_pdgId == 5000002){
+	if(abs(genParticleIter->daughter(0)->pdgId()) != 21 && //StealthSYY: gluons
+	   abs(genParticleIter->daughter(0)->pdgId()) != 5) continue; //StealthSHH: b-jets
+	if(abs(genParticleIter->daughter(1)->pdgId()) != 21 &&
+	   abs(genParticleIter->daughter(1)->pdgId()) != 5) continue;
+      }
+      else{ //RPV SUSY and Exo Higgs: LLP decays to quarks
+	if(abs(genParticleIter->daughter(0)->pdgId()) < 1 || 
+	   abs(genParticleIter->daughter(0)->pdgId()) > 6) continue;
+	if(abs(genParticleIter->daughter(1)->pdgId()) < 1 || 
+	   abs(genParticleIter->daughter(1)->pdgId()) > 6) continue;
+      }
+      
+      if( abs(genParticleIter->daughter(0)->eta()) > 2.4 || abs(genParticleIter->daughter(1)->eta()) > 2.4) continue;
+      
+      if(genVert_idx == 0){
+	genVert1_daughter_pt->push_back(genParticleIter->daughter(0)->pt());
+	genVert1_daughter_pt->push_back(genParticleIter->daughter(1)->pt());
+	genVert1_daughter_eta->push_back(genParticleIter->daughter(0)->eta());
+	genVert1_daughter_eta->push_back(genParticleIter->daughter(1)->eta());
+	genVert1_daughter_phi->push_back(genParticleIter->daughter(0)->phi());
+	genVert1_daughter_phi->push_back(genParticleIter->daughter(1)->phi());
+      }
+      if(genVert_idx == 1){
+	genVert2_daughter_pt->push_back(genParticleIter->daughter(0)->pt());
+	genVert2_daughter_pt->push_back(genParticleIter->daughter(1)->pt());
+	genVert2_daughter_eta->push_back(genParticleIter->daughter(0)->eta());
+	genVert2_daughter_eta->push_back(genParticleIter->daughter(1)->eta());
+	genVert2_daughter_phi->push_back(genParticleIter->daughter(0)->phi());
+	genVert2_daughter_phi->push_back(genParticleIter->daughter(1)->phi());
+      }
+      
+      // displaced vertex position comes from the daughter
+      GlobalPoint genVertex(genParticleIter->daughter(0)->vx(),
+			    genParticleIter->daughter(0)->vy(),
+			    genParticleIter->daughter(0)->vz());
+      
+      genVertices_TM.push_back(genVertex);
+      
+      double px = genParticleIter->daughter(0)->px() + genParticleIter->daughter(1)->px();
+      double py = genParticleIter->daughter(0)->py() + genParticleIter->daughter(1)->py();
+      double pz = genParticleIter->daughter(0)->pz() + genParticleIter->daughter(1)->pz();
+      
+      genVert_netPt_TM->push_back(sqrt(px*px + py*py));
+      genVert_netP_TM->push_back(sqrt(px*px + py*py + pz*pz));
+      
+      genVert_sumPt_TM->push_back(genParticleIter->daughter(0)->pt() + genParticleIter->daughter(1)->pt());
+      genVert_deltaR_TM->push_back(reco::deltaR(genParticleIter->daughter(0)->eta(), genParticleIter->daughter(0)->phi(), genParticleIter->daughter(1)->eta(), genParticleIter->daughter(1)->phi()));
+      
+      Vertex leading_pv = primaryVertices->at(0);
+      float dx_BV = genVertex.x() - leading_pv.x();
+      float dy_BV = genVertex.y() - leading_pv.y();
+      float dz_BV = genVertex.z() - leading_pv.z();
+      
+      //float dx_BV = genVertex.x() - fake_bs_vtx.x();
+      //float dy_BV = genVertex.y() - fake_bs_vtx.y();
+      //float dz_BV = genVertex.z() - fake_bs_vtx.z();
+      //genVert_dBV2D_TM->push_back(sqrt(dx_BV*dx_BV + dy_BV*dy_BV));
+      //genVert_dBV3D_TM->push_back(sqrt(dx_BV*dx_BV + dy_BV*dy_BV + dz_BV*dz_BV));
+      
+      genVert_dBV2D_TM->push_back(sqrt(dx_BV*dx_BV + dy_BV*dy_BV));
+      genVert_dBV3D_TM->push_back(sqrt(dx_BV*dx_BV + dy_BV*dy_BV + dz_BV*dz_BV));
+      
+      reco::Vertex::Point p(genVertex.x(), genVertex.y(), genVertex.z());
+      reco::Vertex::Error e;
+      e(0,0) = 0;
+      e(1,1) = 0;
+      e(2,2) = 0;
+      reco::Vertex gen_vtx(p, e);
+      //Gen vertex close track calculation
+      int closeSeedTracks3D = 0;
+      int closeSeedTracks2D = 0;
+      
+      uint i_tk = 0;
+      for(scoutingTrackIter = ScoutingTrackHandle->begin(); scoutingTrackIter != ScoutingTrackHandle->end(); ++scoutingTrackIter){
+	edm::Ref<std::vector<reco::Track>> trackRef(ScoutingTrackHandle, i_tk);
+	auto scoutTrack = (*ScoutingTrackRefHandle)[trackRef];
+	if ((scoutingTrackIter->pt()>pt_min_cut) && (scoutingTrackIter->hitPattern().numberOfValidPixelHits() > npixelHits_min_cut) && (scoutingTrackIter->hitPattern().numberOfValidStripHits() > nstripHits_min_cut) && (scoutingTrackIter->hitPattern().trackerLayersWithMeasurement() > ntrackerLayers_min_cut) && (fabs(scoutingTrackIter->eta())<2.4)){
+	  reco::TransientTrack transientScoutTrack = tt_builder.build(*scoutingTrackIter);
+	  std::pair<bool, Measurement1D> ttk_transverseDist = IPTools::absoluteTransverseImpactParameter(transientScoutTrack, fake_bs_vtx);
+	  if(ttk_transverseDist.second.significance()>4){
+	    std::pair<bool, Measurement1D> tv_3DDist = IPTools::absoluteImpactParameter3D(transientScoutTrack, gen_vtx);
+	    std::pair<bool, Measurement1D> tv_2DDist = IPTools::absoluteTransverseImpactParameter(transientScoutTrack, gen_vtx);
+	    if(tv_3DDist.second.significance()<5){
+	      closeSeedTracks3D++;
+	    }
+	    if(tv_2DDist.second.significance()<5){
+	      closeSeedTracks2D++;
+	    }
+	  }
+	}
+	i_tk++;
+      } //end close track calculation
+      genVert_nCloseSeedTracks3D->push_back(closeSeedTracks3D);
+      genVert_nCloseSeedTracks2D->push_back(closeSeedTracks2D);
+      VertexDistanceXY vertex_dist_2d;
+      Measurement1D dBV_measurement;
+      Measurement1D dPVV_measurement;
+      float dBV_t;
+      //Gen-reco vertex matching calculation
+      t = 0;
+      int nMatches = 0;
+      for (auto vertex_iter = vertices_ntk.begin(); vertex_iter != vertices_ntk.end(); ++vertex_iter) {
+	v = vertices_ntk.at(t);
+	float genRecoDist = sqrt(pow(genVertex.x()-v.x(),2)+pow(genVertex.y()-v.y(),2)+pow(genVertex.z()-v.z(),2));
+	if(genRecoDist<matchVertexDistance){
+	  nMatches++;
+	  dBV_measurement = vertex_dist_2d.distance(v, fake_bs_vtx);
+	  dBV_t = dBV_measurement.value();
+	  
+	  std::vector<TrackRef> trks = vertex_track_vec(v);
+	  float p_tot[3] = {0.0, 0.0, 0.0};
+	  for(auto trk:v.refittedTracks()){
+	    p_tot[0] += trk.px();
+	    p_tot[1] += trk.py();
+	    p_tot[2] += trk.pz();
+	  }
+	  float cos_T = ( p_tot[0]*(v.x()-beamspot->x0())+p_tot[1]*(v.y()-beamspot->y0())) / (sqrt(pow(p_tot[0],2)+pow(p_tot[1],2))*sqrt(pow(v.x()-beamspot->x0(),2)+pow(v.y()-beamspot->y0(),2)) );
+	  genVertMatch_genIdx->push_back(genVert_idx);
+	  genVertMatch_dist->push_back(genRecoDist);
+	  genVertMatch_dBV->push_back(dBV_t);
+	  genVertMatch_dBVErr->push_back(dBV_measurement.error());
+	  genVertMatch_chi2->push_back(v.normalizedChi2());
+	  genVertMatch_cosT->push_back(cos_T);
+	  genVertMatch_nTracks->push_back(trks.size()); 
+	}
+	t++;
+      }
+      genVert_nMatches->push_back(nMatches);
+      genVert_idx++;
+    }
+  
+    genVert_dVV_TM = 0;
+    genVert_dPhiVV_TM = 0;
+    if(genVertices_TM.size() == 2 && genVert_idx == 2){ //require 2 gen vertices with both daughters within eta 2.4
+      genVert_dVV_TM = sqrt( std::pow(genVertices_TM.at(0).x() - genVertices_TM.at(1).x(), 2) +
+			     std::pow(genVertices_TM.at(0).y() - genVertices_TM.at(1).y(), 2) + 
+			     std::pow(genVertices_TM.at(0).z() - genVertices_TM.at(1).z(), 2) );
+      genVert_dPhiVV_TM = reco::deltaPhi(
+					 static_cast<double>(genVertices_TM.at(0).phi()),
+					 static_cast<double>(genVertices_TM.at(1).phi())
+					 );
+    }
+    nPV_TM = primaryVertices->size(); //Get the nPV also for events with no vertices
+    tmTree->Fill();
+  }
+  
+  t=0;
+  if(verticesH.isValid()){
   
     nVertices = vertices_ntk.size();
 
@@ -1941,11 +2033,10 @@ if(isMC && doTMTree){
   //Two leading vertices
   vector<double> dBVs;
   VertexDistanceXY vertex_dist_2d;
-  t=0;
   Measurement1D dBV_measurement;
   Measurement1D dPVV_measurement;
   float dBV_t;
-  
+  t=0;
   std::vector<std::vector<float>> deltaRVecVertices;
 
   //std::cout << "About to start vertex loop. "
@@ -2409,7 +2500,17 @@ void ScoutingTreeMakerRun3::beginJob() {
     genVert_deltaR_TM = new std::vector<double>;
     genVert_dBV2D_TM = new std::vector<double>;
     genVert_dBV3D_TM = new std::vector<double>;
-
+    genVert_nCloseSeedTracks3D = new std::vector<double>;
+    genVert_nCloseSeedTracks2D = new std::vector<double>;
+    genVert_nMatches = new std::vector<int>;
+    genVertMatch_genIdx = new std::vector<int>;
+    genVertMatch_dist = new std::vector<float>;
+    genVertMatch_dBV = new std::vector<float>;
+    genVertMatch_dBVErr = new std::vector<float>;
+    genVertMatch_chi2 = new std::vector<float>;
+    genVertMatch_cosT = new std::vector<float>;
+    genVertMatch_nTracks = new std::vector<int>;
+    
     genVert1_daughter_pt = new std::vector<double>;
     genVert1_daughter_eta = new std::vector<double>;
     genVert1_daughter_phi = new std::vector<double>;
@@ -2425,6 +2526,16 @@ void ScoutingTreeMakerRun3::beginJob() {
       tmTree->Branch("genVert_deltaR_TM", &genVert_deltaR_TM);
       tmTree->Branch("genVert_dBV2D_TM", &genVert_dBV2D_TM);
       tmTree->Branch("genVert_dBV3D_TM", &genVert_dBV3D_TM);
+      tmTree->Branch("genVert_nCloseSeedTracks3D", &genVert_nCloseSeedTracks3D);
+      tmTree->Branch("genVert_nCloseSeedTracks2D", &genVert_nCloseSeedTracks2D);
+      tmTree->Branch("genVert_nMatches", &genVert_nMatches);
+      tmTree->Branch("genVertMatch_genIdx", &genVertMatch_genIdx);
+      tmTree->Branch("genVertMatch_dist", &genVertMatch_dist);
+      tmTree->Branch("genVertMatch_dBV", &genVertMatch_dBV);
+      tmTree->Branch("genVertMatch_dBVErr", &genVertMatch_dBVErr);
+      tmTree->Branch("genVertMatch_chi2", &genVertMatch_chi2);
+      tmTree->Branch("genVertMatch_cosT", &genVertMatch_cosT);
+      tmTree->Branch("genVertMatch_nTracks", &genVertMatch_nTracks);
       tmTree->Branch("genVert_dVV_TM", &genVert_dVV_TM, "genVert_dVV_TM/D");
       tmTree->Branch("genVert_dPhiVV_TM", &genVert_dPhiVV_TM, "genVert_dPhiVV_TM/D");
       tmTree->Branch("genVert1_daughter_pt", &genVert1_daughter_pt);
@@ -2436,6 +2547,7 @@ void ScoutingTreeMakerRun3::beginJob() {
       tmTree->Branch("nPV_TM", &nPV_TM, "nPV_TM/I");
       tmTree->Branch("weight", &weight, "weight/D");
       tmTree->Branch("uncorrectedWeight", &uncorrectedWeight, "uncorrectedWeight/D");
+      tmTree->Branch("weight_PU_BCDEFGHI_nominal", &weight_PU_BCDEFGHI_nominal, "weight_PU_BCDEFGHI_nominal/D");
       tmTree->Branch("hltHTProxy", &hltHTProxy, "hltHTProxy/F");
     }
 
@@ -2934,7 +3046,17 @@ void ScoutingTreeMakerRun3::endJob() {
   delete genVert_deltaR_TM;
   delete genVert_dBV2D_TM;
   delete genVert_dBV3D_TM;
-
+  delete genVert_nCloseSeedTracks3D;
+  delete genVert_nCloseSeedTracks2D;
+  delete genVert_nMatches;
+  delete genVertMatch_genIdx;
+  delete genVertMatch_dist;
+  delete genVertMatch_dBV;
+  delete genVertMatch_dBVErr;
+  delete genVertMatch_chi2;
+  delete genVertMatch_cosT;
+  delete genVertMatch_nTracks;
+  
   delete genVert_netPt_TM;
   delete genVert_netP_TM;
 
