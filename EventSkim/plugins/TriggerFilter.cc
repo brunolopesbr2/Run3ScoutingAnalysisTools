@@ -82,6 +82,7 @@ class TriggerFilter : public edm::one::EDFilter<edm::one::SharedResources, edm::
       const edm::EDGetTokenT<std::vector<reco::PFJet> >  pfjetsTokenUp;
       const edm::EDGetTokenT<std::vector<reco::PFJet> >  pfjetsTokenDown;
       const edm::EDGetTokenT<std::vector<pat::Jet> >  patjetsToken;
+      int jetIDMode;        // 0 = no ID, 1 = full Tight(LepVeto) ID, 2 = noise-only ID (displaced friendly)
       const edm::EDGetTokenT<GenEventInfoProduct> GeneratorToken_;
       const edm::EDGetTokenT<std::vector<reco::GenJet>> GenJetToken_;
       const edm::EDGetTokenT<edm::TriggerResults> triggerResultsToken;
@@ -185,6 +186,7 @@ TriggerFilter::TriggerFilter(const edm::ParameterSet& iConfig):
   pfjetsTokenUp(consumes<std::vector<reco::PFJet> >(iConfig.getParameter<edm::InputTag>("pfjetsUp"))),
   pfjetsTokenDown(consumes<std::vector<reco::PFJet> >(iConfig.getParameter<edm::InputTag>("pfjetsDown"))),
   patjetsToken(consumes<std::vector<pat::Jet> >(iConfig.getParameter<edm::InputTag>("patjets"))),
+  jetIDMode(iConfig.existsAs<int>("jetIDMode") ? iConfig.getParameter<int>("jetIDMode") : 1),
   GeneratorToken_(consumes(iConfig.getParameter<edm::InputTag>("generatorName"))),
   GenJetToken_(consumes(iConfig.getParameter<edm::InputTag>("genJet_src"))),
   triggerResultsToken(consumes<edm::TriggerResults>(iConfig.getParameter<edm::InputTag>("triggerresults"))),
@@ -277,158 +279,6 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
   if (l1HT > L1HTThreshold){
     passHTFilter = true;
   }
-  
-  int nPFJets = -1;
-  int nPFJets_up = -1;
-  int nPFJets_down = -1;
-
-  //Get the jets
-  Handle<vector<reco::PFJet> > pfjetsH;
-  iEvent.getByToken(pfjetsToken, pfjetsH);
-
-  std::unique_ptr<std::vector<reco::PFJet>> pfJetVector(new std::vector<reco::PFJet>());
-  std::unique_ptr<std::vector<reco::PFJet>> pfJetVector_up(new std::vector<reco::PFJet>());
-  std::unique_ptr<std::vector<reco::PFJet>> pfJetVector_down(new std::vector<reco::PFJet>());
-
-
-  //New jet recommendations -- see https://cms-hlt-scouting.docs.cern.ch/DataAnalysis/JME/#recommendations-for-the-136-tev-scouting-data-analysis-runs-2024-c-i
-  int nJetsTotal = 0;
-
-  //Jet loop with nominal valies
-  if(pfjetsH.isValid() && isScouting){
-    for (auto jets_iter = pfjetsH->begin(); jets_iter != pfjetsH->end(); ++jets_iter) {
-      if (jets_iter->pt() > 30) {
-        int binX = jetVetoMap_->GetXaxis()->FindBin(jets_iter->eta());
-        int binY = jetVetoMap_->GetYaxis()->FindBin(jets_iter->phi());
-        float maskBit = jetVetoMap_->GetBinContent(binX, binY);
-
-        //float energy = TMath::Sqrt(pow(TMath::CosH(jets_iter->eta())*jets_iter->pt(),2)+pow(jets_iter->mass(),2));
-        float energy = jets_iter->chargedHadronEnergy() + jets_iter->neutralHadronEnergy() + jets_iter->muonEnergy() + jets_iter->electronEnergy() + jets_iter->photonEnergy() + jets_iter->HFEMEnergy();
-        
-        //float Jet_chHEF = jets_iter->chargedHadronEnergy()/energy;
-        float Jet_neHEF = jets_iter->neutralHadronEnergy()/energy;
-        float Jet_muEF = jets_iter->muonEnergy()/energy;
-        //float Jet_chEmEF = jets_iter->electronEnergy()/energy;
-        float Jet_neEmEF = (jets_iter->photonEnergy()+jets_iter->HFEMEnergy())/energy;
-
-        int Jet_chMultiplicity = jets_iter->chargedHadronMultiplicity()+jets_iter->electronMultiplicity()+jets_iter->muonMultiplicity();
-        int Jet_neMultiplicity = jets_iter->neutralHadronMultiplicity()+jets_iter->photonMultiplicity()+jets_iter->HFHadronMultiplicity()+jets_iter->HFEMMultiplicity();
-
-        bool Jet_passJetIdTight = false;
-
-        if ( abs(jets_iter->eta()) < 2.6 ){
-          Jet_passJetIdTight = (Jet_neHEF < 0.99) && (Jet_neEmEF < 0.90) && (Jet_chMultiplicity+Jet_neMultiplicity > 1) && (Jet_muEF < 0.80) && (Jet_chMultiplicity > 0);
-        }
-        if ( abs(jets_iter->eta()) >= 2.6 && abs(jets_iter->eta()) < 2.7 ) {
-          Jet_passJetIdTight = (Jet_neEmEF < 0.99) && (Jet_muEF < 0.80) && (Jet_neMultiplicity > 1);
-        }
-        if ( abs(jets_iter->eta()) >= 2.7 && abs(jets_iter->eta()) < 3.0 ) {
-          Jet_passJetIdTight = (Jet_neEmEF < 0.99) && (Jet_neMultiplicity > 1);
-        }
-        if ( abs(jets_iter->eta()) >= 3.0 && abs(jets_iter->eta()) < 5.0 ) {
-          Jet_passJetIdTight = (Jet_neEmEF < 0.2);
-        }
-        if((maskBit==0) && Jet_passJetIdTight){
-          pfJetVector->emplace_back(*jets_iter);
-        }
-        nJetsTotal++;
-      }
-    }
-    nPFJets = pfJetVector->size();
-  }
-
-  if(isMC && doJECUnc){
-    //Up variation
-    Handle<vector<reco::PFJet> > pfjetsUpH;
-    iEvent.getByToken(pfjetsTokenUp, pfjetsUpH);
-    if(pfjetsUpH.isValid() && isScouting){
-      for (auto jets_iter = pfjetsUpH->begin(); jets_iter != pfjetsUpH->end(); ++jets_iter) {
-        if (jets_iter->pt() > 30) {
-          int binX = jetVetoMap_->GetXaxis()->FindBin(jets_iter->eta());
-          int binY = jetVetoMap_->GetYaxis()->FindBin(jets_iter->phi());
-          float maskBit = jetVetoMap_->GetBinContent(binX, binY);
-
-          //float energy = TMath::Sqrt(pow(TMath::CosH(jets_iter->eta())*jets_iter->pt(),2)+pow(jets_iter->mass(),2));
-          float energy = jets_iter->chargedHadronEnergy() + jets_iter->neutralHadronEnergy() + jets_iter->muonEnergy() + jets_iter->electronEnergy() + jets_iter->photonEnergy() + jets_iter->HFEMEnergy();
-          
-          //float Jet_chHEF = jets_iter->chargedHadronEnergy()/energy;
-          float Jet_neHEF = jets_iter->neutralHadronEnergy()/energy;
-          float Jet_muEF = jets_iter->muonEnergy()/energy;
-          //float Jet_chEmEF = jets_iter->electronEnergy()/energy;
-          float Jet_neEmEF = (jets_iter->photonEnergy()+jets_iter->HFEMEnergy())/energy;
-
-          int Jet_chMultiplicity = jets_iter->chargedHadronMultiplicity()+jets_iter->electronMultiplicity()+jets_iter->muonMultiplicity();
-          int Jet_neMultiplicity = jets_iter->neutralHadronMultiplicity()+jets_iter->photonMultiplicity()+jets_iter->HFHadronMultiplicity()+jets_iter->HFEMMultiplicity();
-
-          bool Jet_passJetIdTight = false;
-
-          if ( abs(jets_iter->eta()) < 2.6 ){
-            Jet_passJetIdTight = (Jet_neHEF < 0.99) && (Jet_neEmEF < 0.90) && (Jet_chMultiplicity+Jet_neMultiplicity > 1) && (Jet_muEF < 0.80) && (Jet_chMultiplicity > 0);
-          }
-          if ( abs(jets_iter->eta()) >= 2.6 && abs(jets_iter->eta()) < 2.7 ) {
-            Jet_passJetIdTight = (Jet_neEmEF < 0.99) && (Jet_muEF < 0.80) && (Jet_neMultiplicity > 1);
-          }
-          if ( abs(jets_iter->eta()) >= 2.7 && abs(jets_iter->eta()) < 3.0 ) {
-            Jet_passJetIdTight = (Jet_neEmEF < 0.99) && (Jet_neMultiplicity > 1);
-          }
-          if ( abs(jets_iter->eta()) >= 3.0 && abs(jets_iter->eta()) < 5.0 ) {
-            Jet_passJetIdTight = (Jet_neEmEF < 0.2);
-          }
-          if((maskBit==0) && Jet_passJetIdTight){
-            pfJetVector_up->emplace_back(*jets_iter);
-          }
-          nJetsTotal++;
-        }
-      }
-      nPFJets_up = pfJetVector_up->size();
-    }
-
-    //Down variation
-    Handle<vector<reco::PFJet> > pfjetsDownH;
-    iEvent.getByToken(pfjetsTokenDown, pfjetsDownH);
-
-    if(pfjetsDownH.isValid() && isScouting){
-      for (auto jets_iter = pfjetsDownH->begin(); jets_iter != pfjetsDownH->end(); ++jets_iter) {
-        if (jets_iter->pt() > 30) {
-          int binX = jetVetoMap_->GetXaxis()->FindBin(jets_iter->eta());
-          int binY = jetVetoMap_->GetYaxis()->FindBin(jets_iter->phi());
-          float maskBit = jetVetoMap_->GetBinContent(binX, binY);
-
-          //float energy = TMath::Sqrt(pow(TMath::CosH(jets_iter->eta())*jets_iter->pt(),2)+pow(jets_iter->mass(),2));
-          float energy = jets_iter->chargedHadronEnergy() + jets_iter->neutralHadronEnergy() + jets_iter->muonEnergy() + jets_iter->electronEnergy() + jets_iter->photonEnergy() + jets_iter->HFEMEnergy();
-          
-          //float Jet_chHEF = jets_iter->chargedHadronEnergy()/energy;
-          float Jet_neHEF = jets_iter->neutralHadronEnergy()/energy;
-          float Jet_muEF = jets_iter->muonEnergy()/energy;
-          //float Jet_chEmEF = jets_iter->electronEnergy()/energy;
-          float Jet_neEmEF = (jets_iter->photonEnergy()+jets_iter->HFEMEnergy())/energy;
-
-          int Jet_chMultiplicity = jets_iter->chargedHadronMultiplicity()+jets_iter->electronMultiplicity()+jets_iter->muonMultiplicity();
-          int Jet_neMultiplicity = jets_iter->neutralHadronMultiplicity()+jets_iter->photonMultiplicity()+jets_iter->HFHadronMultiplicity()+jets_iter->HFEMMultiplicity();
-
-          bool Jet_passJetIdTight = false;
-
-          if ( abs(jets_iter->eta()) < 2.6 ){
-            Jet_passJetIdTight = (Jet_neHEF < 0.99) && (Jet_neEmEF < 0.90) && (Jet_chMultiplicity+Jet_neMultiplicity > 1) && (Jet_muEF < 0.80) && (Jet_chMultiplicity > 0);
-          }
-          if ( abs(jets_iter->eta()) >= 2.6 && abs(jets_iter->eta()) < 2.7 ) {
-            Jet_passJetIdTight = (Jet_neEmEF < 0.99) && (Jet_muEF < 0.80) && (Jet_neMultiplicity > 1);
-          }
-          if ( abs(jets_iter->eta()) >= 2.7 && abs(jets_iter->eta()) < 3.0 ) {
-            Jet_passJetIdTight = (Jet_neEmEF < 0.99) && (Jet_neMultiplicity > 1);
-          }
-          if ( abs(jets_iter->eta()) >= 3.0 && abs(jets_iter->eta()) < 5.0 ) {
-            Jet_passJetIdTight = (Jet_neEmEF < 0.2);
-          }
-          if((maskBit==0) && Jet_passJetIdTight){
-            pfJetVector_down->emplace_back(*jets_iter);
-          }
-          nJetsTotal++;
-        }
-      }
-      nPFJets_down = pfJetVector_down->size();
-    }
-  } //doJECUnc
 
   Handle<std::vector<Run3ScoutingMuon> > muonsH;
   iEvent.getByToken(muonsToken, muonsH);
@@ -437,7 +287,7 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
   Handle<Run3ScoutingParticleCollection> scoutingParticle_collection_handle;
   iEvent.getByToken(scoutingParticle_collection_token_, scoutingParticle_collection_handle);
 
-  //select muons to require isolation from jets to get ht
+  //select muons to require isolation 
   std::vector<const Run3ScoutingMuon*> selectedMuons;
   selectedMuons.clear();
 
@@ -459,11 +309,226 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
       }
     }
   }
+  
+  int nPFJets = -1;
+  int nPFJets_up = -1;
+  int nPFJets_down = -1;
+
+  //Get the jets
+  Handle<vector<reco::PFJet> > pfjetsH;
+  iEvent.getByToken(pfjetsToken, pfjetsH);
+
+  std::unique_ptr<std::vector<reco::PFJet>> pfJetVector(new std::vector<reco::PFJet>());
+  std::unique_ptr<std::vector<reco::PFJet>> pfJetVector_up(new std::vector<reco::PFJet>());
+  std::unique_ptr<std::vector<reco::PFJet>> pfJetVector_down(new std::vector<reco::PFJet>());
+
+
+  //New jet recommendations -- see https://cms-hlt-scouting.docs.cern.ch/DataAnalysis/JME/#recommendations-for-the-136-tev-scouting-data-analysis-runs-2024-c-i
+
+  //Jet loop with nominal values
+  if(pfjetsH.isValid() && isScouting){
+    for (auto jets_iter = pfjetsH->begin(); jets_iter != pfjetsH->end(); ++jets_iter) {
+      if(jets_iter->pt() > 30){ 
+        // jet veto map
+        const int   vetoBinX = jetVetoMap_->GetXaxis()->FindBin(jets_iter->eta());
+        const int   vetoBinY = jetVetoMap_->GetYaxis()->FindBin(jets_iter->phi());
+        const float vetoBit  = jetVetoMap_->GetBinContent(vetoBinX, vetoBinY);
+        if(vetoBit != 0) continue;
+
+        bool passID = true;
+        if(jetIDMode !=0){
+          const float jetEnergy = jets_iter->chargedHadronEnergy() + jets_iter->neutralHadronEnergy()
+                      + jets_iter->muonEnergy() + jets_iter->electronEnergy()
+                      + jets_iter->photonEnergy() + jets_iter->HFEMEnergy();
+
+          if(jetEnergy > 0){
+            const float neHEF  = jets_iter->neutralHadronEnergy() / jetEnergy;
+            const float muEF   = jets_iter->muonEnergy() / jetEnergy;
+            const float neEmEF = (jets_iter->photonEnergy() + jets_iter->HFEMEnergy()) / jetEnergy;
+            const int chMult = jets_iter->chargedHadronMultiplicity() + jets_iter->electronMultiplicity() + jets_iter->muonMultiplicity();
+            const int neMult = jets_iter->neutralHadronMultiplicity() + jets_iter->photonMultiplicity() + jets_iter->HFHadronMultiplicity() + jets_iter->HFEMMultiplicity();
+
+            if(jetIDMode == 1){ // default jet tight ID
+              if ( abs(jets_iter->eta()) < 2.6 ){
+                passID = (neHEF < 0.99) && (neEmEF < 0.90) && (chMult+neMult > 1) && (muEF < 0.80) && (chMult > 0);
+              }
+              if ( abs(jets_iter->eta()) >= 2.6 && abs(jets_iter->eta()) < 2.7 ) {
+                passID = (neEmEF < 0.99) && (muEF < 0.80) && (neMult > 1);
+              }
+              if ( abs(jets_iter->eta()) >= 2.7 && abs(jets_iter->eta()) < 3.0 ) {
+                passID = (neEmEF < 0.99) && (neMult > 1);
+              }
+              if ( abs(jets_iter->eta()) >= 3.0 && abs(jets_iter->eta()) < 5.0 ) {
+                passID = (neEmEF < 0.2);
+              }
+            }
+            else{ // mode 2: only reject obvious noise / lepton-like jets, no charged or neutral-fraction requirement
+              passID = (chMult + neMult > 1) && (muEF < 0.80);
+            }
+          }
+          else{
+            passID = false;  // jet with zero energy
+          }
+        }
+        if(!passID) continue;
+
+        bool muonClean = true;
+        for (auto muon : selectedMuons) {
+            float dEta_jet_mu = jets_iter->eta() - muon->eta();
+            float dPhi_jet_mu = deltaPhi(jets_iter->phi(), muon->phi());
+            float dR_jet_mu = sqrt(pow(dEta_jet_mu, 2) + pow(dPhi_jet_mu, 2));
+            if(dR_jet_mu < 0.20){
+              muonClean = false;
+            } 
+        }  
+        if(!muonClean) continue;
+
+        pfJetVector->emplace_back(*jets_iter);
+      }
+    }//end jet loop
+    nPFJets = pfJetVector->size();
+  }
+
+  if(isMC && doJECUnc){
+    //Up variation
+    Handle<vector<reco::PFJet> > pfjetsUpH;
+    iEvent.getByToken(pfjetsTokenUp, pfjetsUpH);
+
+    if(pfjetsUpH.isValid() && isScouting){
+      for (auto jets_iter = pfjetsUpH->begin(); jets_iter != pfjetsUpH->end(); ++jets_iter) {
+        if(jets_iter->pt() > 30){ 
+          // jet veto map
+          const int   vetoBinX = jetVetoMap_->GetXaxis()->FindBin(jets_iter->eta());
+          const int   vetoBinY = jetVetoMap_->GetYaxis()->FindBin(jets_iter->phi());
+          const float vetoBit  = jetVetoMap_->GetBinContent(vetoBinX, vetoBinY);
+          if(vetoBit != 0) continue;
+
+          bool passID = true;
+          if(jetIDMode !=0){
+            const float jetEnergy = jets_iter->chargedHadronEnergy() + jets_iter->neutralHadronEnergy()
+                        + jets_iter->muonEnergy() + jets_iter->electronEnergy()
+                        + jets_iter->photonEnergy() + jets_iter->HFEMEnergy();
+
+            if(jetEnergy > 0){
+              const float neHEF  = jets_iter->neutralHadronEnergy() / jetEnergy;
+              const float muEF   = jets_iter->muonEnergy() / jetEnergy;
+              const float neEmEF = (jets_iter->photonEnergy() + jets_iter->HFEMEnergy()) / jetEnergy;
+              const int chMult = jets_iter->chargedHadronMultiplicity() + jets_iter->electronMultiplicity() + jets_iter->muonMultiplicity();
+              const int neMult = jets_iter->neutralHadronMultiplicity() + jets_iter->photonMultiplicity() + jets_iter->HFHadronMultiplicity() + jets_iter->HFEMMultiplicity();
+
+              if(jetIDMode == 1){ // default jet tight ID
+                if ( abs(jets_iter->eta()) < 2.6 ){
+                  passID = (neHEF < 0.99) && (neEmEF < 0.90) && (chMult+neMult > 1) && (muEF < 0.80) && (chMult > 0);
+                }
+                if ( abs(jets_iter->eta()) >= 2.6 && abs(jets_iter->eta()) < 2.7 ) {
+                  passID = (neEmEF < 0.99) && (muEF < 0.80) && (neMult > 1);
+                }
+                if ( abs(jets_iter->eta()) >= 2.7 && abs(jets_iter->eta()) < 3.0 ) {
+                  passID = (neEmEF < 0.99) && (neMult > 1);
+                }
+                if ( abs(jets_iter->eta()) >= 3.0 && abs(jets_iter->eta()) < 5.0 ) {
+                  passID = (neEmEF < 0.2);
+                }
+              }
+              else{ // mode 2: only reject obvious noise / lepton-like jets, no charged or neutral-fraction requirement
+                passID = (chMult + neMult > 1) && (muEF < 0.80);
+              }
+            }
+            else{
+              passID = false;  // jet with zero energy
+            }
+          }
+          if(!passID) continue;
+
+          bool muonClean = true;
+          for (auto muon : selectedMuons) {
+              float dEta_jet_mu = jets_iter->eta() - muon->eta();
+              float dPhi_jet_mu = deltaPhi(jets_iter->phi(), muon->phi());
+              float dR_jet_mu = sqrt(pow(dEta_jet_mu, 2) + pow(dPhi_jet_mu, 2));
+              if(dR_jet_mu < 0.20){
+                muonClean = false;
+              } 
+          }  
+          if(!muonClean) continue;
+
+          pfJetVector_up->emplace_back(*jets_iter);
+        }
+      }//end jet loop
+      nPFJets_up = pfJetVector_up->size();
+    }
+
+    //Down variation
+    Handle<vector<reco::PFJet> > pfjetsDownH;
+    iEvent.getByToken(pfjetsTokenDown, pfjetsDownH);
+
+    if(pfjetsDownH.isValid() && isScouting){
+      for (auto jets_iter = pfjetsDownH->begin(); jets_iter != pfjetsDownH->end(); ++jets_iter) {
+        if(jets_iter->pt() > 30){ 
+          // jet veto map
+          const int   vetoBinX = jetVetoMap_->GetXaxis()->FindBin(jets_iter->eta());
+          const int   vetoBinY = jetVetoMap_->GetYaxis()->FindBin(jets_iter->phi());
+          const float vetoBit  = jetVetoMap_->GetBinContent(vetoBinX, vetoBinY);
+          if(vetoBit != 0) continue;
+
+          bool passID = true;
+          if(jetIDMode !=0){
+            const float jetEnergy = jets_iter->chargedHadronEnergy() + jets_iter->neutralHadronEnergy()
+                        + jets_iter->muonEnergy() + jets_iter->electronEnergy()
+                        + jets_iter->photonEnergy() + jets_iter->HFEMEnergy();
+
+            if(jetEnergy > 0){
+              const float neHEF  = jets_iter->neutralHadronEnergy() / jetEnergy;
+              const float muEF   = jets_iter->muonEnergy() / jetEnergy;
+              const float neEmEF = (jets_iter->photonEnergy() + jets_iter->HFEMEnergy()) / jetEnergy;
+              const int chMult = jets_iter->chargedHadronMultiplicity() + jets_iter->electronMultiplicity() + jets_iter->muonMultiplicity();
+              const int neMult = jets_iter->neutralHadronMultiplicity() + jets_iter->photonMultiplicity() + jets_iter->HFHadronMultiplicity() + jets_iter->HFEMMultiplicity();
+
+              if(jetIDMode == 1){ // default jet tight ID
+                if ( abs(jets_iter->eta()) < 2.6 ){
+                  passID = (neHEF < 0.99) && (neEmEF < 0.90) && (chMult+neMult > 1) && (muEF < 0.80) && (chMult > 0);
+                }
+                if ( abs(jets_iter->eta()) >= 2.6 && abs(jets_iter->eta()) < 2.7 ) {
+                  passID = (neEmEF < 0.99) && (muEF < 0.80) && (neMult > 1);
+                }
+                if ( abs(jets_iter->eta()) >= 2.7 && abs(jets_iter->eta()) < 3.0 ) {
+                  passID = (neEmEF < 0.99) && (neMult > 1);
+                }
+                if ( abs(jets_iter->eta()) >= 3.0 && abs(jets_iter->eta()) < 5.0 ) {
+                  passID = (neEmEF < 0.2);
+                }
+              }
+              else{ // mode 2: only reject obvious noise / lepton-like jets, no charged or neutral-fraction requirement
+                passID = (chMult + neMult > 1) && (muEF < 0.80);
+              }
+            }
+            else{
+              passID = false;  // jet with zero energy
+            }
+          }
+          if(!passID) continue;
+
+          bool muonClean = true;
+          for (auto muon : selectedMuons) {
+              float dEta_jet_mu = jets_iter->eta() - muon->eta();
+              float dPhi_jet_mu = deltaPhi(jets_iter->phi(), muon->phi());
+              float dR_jet_mu = sqrt(pow(dEta_jet_mu, 2) + pow(dPhi_jet_mu, 2));
+              if(dR_jet_mu < 0.20){
+                muonClean = false;
+              } 
+          }  
+          if(!muonClean) continue;
+
+          pfJetVector_down->emplace_back(*jets_iter);
+        }
+      }//end jet loop
+      nPFJets_down = pfJetVector_down->size();
+    }
+  } //doJECUnc
+
 
   float ht_corrected = 0;
   float dR_jet_mu;
   bool matches_muon;
-
 
 //calculate HT based on Tight Jets
   for (const auto& jet: *pfJetVector) {
@@ -556,8 +621,8 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
   float jetAcceptance = 0;
 
-  if (nJetsTotal != 0){
-      jetAcceptance = (float)pfJetVector->size() / nJetsTotal;
+  if (nPFJets != 0){
+      jetAcceptance = (float)pfJetVector->size() / nPFJets;
   }
   if (isMC) h_jetAcceptance->Fill(jetAcceptance ,weightMap->at("correctedNominal"));
   else h_jetAcceptance->Fill(jetAcceptance, theWeight); //theWeight = 1 for data

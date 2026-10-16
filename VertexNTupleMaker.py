@@ -392,6 +392,7 @@ process.triggerFilter = cms.EDFilter('TriggerFilter',
                                      pfjetsUp          = pfjetsTagUp,
                                      pfjetsDown        = pfjetsTagDown,
                                      patjets           = patjetsTag,
+                                     jetIDMode = cms.int32(2), #0 = no ID, 1 = same as regualr analysis, 2 = no charged energy fraction
                                      generatorName = cms.InputTag('generator'),
                                      genJet_src = cms.InputTag('slimmedGenJets',''),
                                      storeGenJets = cms.bool(False),
