@@ -313,24 +313,3 @@ if(doTrackPlots):
         compare_plot(unmovedTrack_eta[signal], movedTrack_eta[signal], legend1="Unmoved Tracks", legend2="Moved Tracks", plot_title=f"Tracks eta for {signal}", x_axis="eta", y_axis="A.U.", logy=logscale, plotFileName=f"{plotsFolder}/movedTracks_eta_{signal}", vline=[])
         compare_plot(unmovedTrack_phi[signal], movedTrack_phi[signal], legend1="Unmoved Tracks", legend2="Moved Tracks", plot_title=f"Tracks phi for {signal}", x_axis="phi", y_axis="A.U.", logy=logscale, plotFileName=f"{plotsFolder}/movedTracks_phi_{signal}", vline=[])
         compare_plot(unmovedTrack_dxy[signal], movedTrack_dxy[signal], legend1="Unmoved Tracks", legend2="Moved Tracks", plot_title=f"Tracks dxy for {signal}", x_axis="dxy [cm]", y_axis="A.U.", logy=logscale, plotFileName=f"{plotsFolder}/movedTracks_dxy_{signal}", vline=[])
-
-
-outFile = ROOT.TFile("VertexEffCorrections.root", "RECREATE")
-
-for signal in [test_signal]:
-    sigDir = outFile.mkdir(signal)
-    sigDir.cd()
-    for ntk in [3, 4, 5, 6, 7, 8, 9]:
-        k = f"{signal}_{ntk}tks"
-
-        if (ntk == 9):
-            h_dBV = make_ratio_hist(vertexEffdBV[f"2024_{k}"], vertexEffdBV[f"MC_{k}"],
-                                    f"ratio_dBV_{ntk}tks",
-                                    f"Data/MC vertex efficiency, >= {ntk} tracks;dBV [cm];Data/MC")
-        else:
-            h_dBV = make_ratio_hist(vertexEffdBV[f"2024_{k}"], vertexEffdBV[f"MC_{k}"],
-                        f"ratio_dBV_{ntk}tks",
-                        f"Data/MC vertex efficiency, {ntk} tracks;dBV [cm];Data/MC")
-        h_dBV.Write()
-
-outFile.Close()
