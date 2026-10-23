@@ -1062,7 +1062,7 @@
     }
   },
 "2024Scouting": {
-  "jercJsonPath": "jetScouting_jerc.json.gz",
+  "jercJsonPath": "jetScouting_jerc_withPuppiJER.json.gz",
   "ApplyOnData": {
     "JesNominal": {
       "Era2024ScoutingAll": {
@@ -1078,10 +1078,9 @@
       "tagNameL2Relative": "Summer24Prompt24_V5_MC_L2Relative_AK4PFScouting"
     },
     "JerNominal": {
-      "_comment": "NOT AVAILABLE. jetScouting_jerc.json.gz has no PtResolution/ScaleFactor/SFUncertainty corrections.",
-      "tagNamePtResolution":   "",
-      "tagNameJerScaleFactor": "",
-      "tagNameJerSFUncertainty": ""
+      "tagNamePtResolution": "Summer24Prompt24_JRV2_MC_PtResolution_AK4PFPuppi",
+      "tagNameJerScaleFactor": "Summer24Prompt24_JRV2_MC_ScaleFactor_AK4PFPuppi",
+      "tagNameJerSFUncertainty": "Summer24Prompt24_JRV2_MC_SFUncertainty_AK4PFPuppi"
     },
     "JesUncertaintySet": {
       "JesUncertaintySetFull": {
