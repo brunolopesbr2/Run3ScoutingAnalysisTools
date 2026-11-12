@@ -138,57 +138,57 @@ private:
   double vertexDist;
 
   //track level
-  std::vector<double> originalTracks_pt;
-  std::vector<double> originalTracks_eta;
-  std::vector<double> originalTracks_phi;
-  std::vector<double> originalTracks_dxy;
-  std::vector<double> originalTracks_dz;
+  std::vector<float> originalTracks_pt;
+  std::vector<float> originalTracks_eta;
+  std::vector<float> originalTracks_phi;
+  std::vector<float> originalTracks_dxy;
+  std::vector<float> originalTracks_dz;
 
-  std::vector<double> tracks_pt;
-  std::vector<double> tracks_eta;
-  std::vector<double> tracks_phi;
-  std::vector<double> tracks_dxy;
-  std::vector<double> tracks_dz;
+  std::vector<float> tracks_pt;
+  std::vector<float> tracks_eta;
+  std::vector<float> tracks_phi;
+  std::vector<float> tracks_dxy;
+  std::vector<float> tracks_dz;
 
-  std::vector<double> movedTracks_pt;
-  std::vector<double> movedTracks_eta;
-  std::vector<double> movedTracks_phi;
-  std::vector<double> movedTracks_dxy;
-  std::vector<double> movedTracks_dz;
+  std::vector<float> movedTracks_pt;
+  std::vector<float> movedTracks_eta;
+  std::vector<float> movedTracks_phi;
+  std::vector<float> movedTracks_dxy;
+  std::vector<float> movedTracks_dz;
 
   //vertex level
-  std::vector<double> primaryVertex_x;
-  std::vector<double> primaryVertex_y;
-  std::vector<double> primaryVertex_z;
+  std::vector<float> primaryVertex_x;
+  std::vector<float> primaryVertex_y;
+  std::vector<float> primaryVertex_z;
 
-  double moveVertex_x;
-  double moveVertex_y;
-  double moveVertex_z;
-  double moveVertex_dBV;
-  double moveVertex_dBV3D;
+  float moveVertex_x;
+  float moveVertex_y;
+  float moveVertex_z;
+  float moveVertex_dBV;
+  float moveVertex_dBV3D;
 
-  double moveVertex_dPVV;
-  double moveVertex_dPVV3D;
+  float moveVertex_dPVV;
+  float moveVertex_dPVV3D;
 
-  std::vector<double> vertices_x;
-  std::vector<double> vertices_y;
-  std::vector<double> vertices_z;
-  std::vector<double> vertices_dBV;
+  std::vector<float> vertices_x;
+  std::vector<float> vertices_y;
+  std::vector<float> vertices_z;
+  std::vector<float> vertices_dBV;
 
-  double LLP_dR;
-  double LLP_PtSum;
-  double LLP_netPt;
-  double LLP_netP;
+  float LLP_dR;
+  float LLP_PtSum;
+  float LLP_netPt;
+  float LLP_netP;
 
-  double LLP_dR_withCloseTracks;
-  double LLP_PtSum_withCloseTracks;
-  double LLP_netPt_withCloseTracks;
-  double LLP_netP_withCloseTracks;
+  float LLP_dR_withCloseTracks;
+  float LLP_PtSum_withCloseTracks;
+  float LLP_netPt_withCloseTracks;
+  float LLP_netP_withCloseTracks;
 
-  double jets_dR;
-  std::vector<double> jets_pt;
-  std::vector<double> jets_eta;
-  std::vector<double> jets_phi;
+  float jets_dR;
+  std::vector<float> jets_pt;
+  std::vector<float> jets_eta;
+  std::vector<float> jets_phi;
 
   //event level
   int nSurvivedTracks;
@@ -206,12 +206,12 @@ private:
   bool matchedVertex;
 
   int nMatchedVertices;
-  double matchedVert_chi2;
-  double matchedVert_cosT;
+  float matchedVert_chi2;
+  float matchedVert_cosT;
   int matchedVert_nTracks;
 
-  double matchedVert_dBV;
-  double matchedVert_dBVerr;
+  float matchedVert_dBV;
+  float matchedVert_dBVerr;
 
   double weight;
   double weight_noTrigger;
@@ -506,7 +506,7 @@ void VertexEffAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&
     }
   }
   reco::BeamSpot::Point onlinePosition(bs.x(), bs.y(), bs.z());
-  reco::BeamSpot* beamspot = new reco::BeamSpot(onlinePosition,
+  auto beamspot = std::make_unique<reco::BeamSpot>(onlinePosition,
 					 bs.sigmaZ(),
 					 bs.dxdz(),
 					 bs.dydz(),
@@ -804,14 +804,14 @@ void VertexEffAnalyzer::beginJob() {
   objectTree->Branch("nMovedTracks", &nMovedTracks, "nMovedTracks/I");
   objectTree->Branch("nPreselJets", &nPreselJets, "nPreselJets/I");
 
-  objectTree->Branch("moveVertex_x", &moveVertex_x, "moveVertex_x/D");
-  objectTree->Branch("moveVertex_y", &moveVertex_y, "moveVertex_y/D");
-  objectTree->Branch("moveVertex_z", &moveVertex_z, "moveVertex_z/D");
-  objectTree->Branch("moveVertex_dBV", &moveVertex_dBV, "moveVertex_dBV/D");
-  objectTree->Branch("moveVertex_dBV3D", &moveVertex_dBV3D, "moveVertex_dBV3D/D");
+  objectTree->Branch("moveVertex_x", &moveVertex_x, "moveVertex_x/F");
+  objectTree->Branch("moveVertex_y", &moveVertex_y, "moveVertex_y/F");
+  objectTree->Branch("moveVertex_z", &moveVertex_z, "moveVertex_z/F");
+  objectTree->Branch("moveVertex_dBV", &moveVertex_dBV, "moveVertex_dBV/F");
+  objectTree->Branch("moveVertex_dBV3D", &moveVertex_dBV3D, "moveVertex_dBV3D/F");
 
-  objectTree->Branch("moveVertex_dPVV", &moveVertex_dPVV, "moveVertex_dPVV/D");
-  objectTree->Branch("moveVertex_dPVV3D", &moveVertex_dPVV3D, "moveVertex_dPVV3D/D");
+  objectTree->Branch("moveVertex_dPVV", &moveVertex_dPVV, "moveVertex_dPVV/F");
+  objectTree->Branch("moveVertex_dPVV3D", &moveVertex_dPVV3D, "moveVertex_dPVV3D/F");
 
   objectTree->Branch("nPV", &nPV, "nPV/I");
   objectTree->Branch("nVertices", &nVertices, "nVertices/I");
@@ -819,22 +819,22 @@ void VertexEffAnalyzer::beginJob() {
   objectTree->Branch("nMatchedVertices", &nMatchedVertices, "nMatchedVertices/I");
 
   objectTree->Branch("matchedVertex_nTracks", &matchedVert_nTracks, "matchedVert_nTracks/I");
-  objectTree->Branch("matchedVertex_cosT", &matchedVert_cosT, "matchedVert_cosT/D");
-  objectTree->Branch("matchedVertex_chi2", &matchedVert_chi2, "matchedVert_chi2/D");
-  objectTree->Branch("matchedVertex_dBV", &matchedVert_dBV, "matchedVert_dBV/D");
-  objectTree->Branch("matchedVertex_dBVerr", &matchedVert_dBVerr, "matchedVert_dBVerr/D");
+  objectTree->Branch("matchedVertex_cosT", &matchedVert_cosT, "matchedVert_cosT/F");
+  objectTree->Branch("matchedVertex_chi2", &matchedVert_chi2, "matchedVert_chi2/F");
+  objectTree->Branch("matchedVertex_dBV", &matchedVert_dBV, "matchedVert_dBV/F");
+  objectTree->Branch("matchedVertex_dBVerr", &matchedVert_dBVerr, "matchedVert_dBVerr/F");
 
-  objectTree->Branch("LLP_dR", &LLP_dR, "LLP_dR/D");
-  objectTree->Branch("LLP_PtSum", &LLP_PtSum, "LLP_PtSum/D");
-  objectTree->Branch("LLP_netP", &LLP_netP, "LLP_netP/D");
-  objectTree->Branch("LLP_netPt", &LLP_netPt, "LLP_netPt/D");
+  objectTree->Branch("LLP_dR", &LLP_dR, "LLP_dR/F");
+  objectTree->Branch("LLP_PtSum", &LLP_PtSum, "LLP_PtSum/F");
+  objectTree->Branch("LLP_netP", &LLP_netP, "LLP_netP/F");
+  objectTree->Branch("LLP_netPt", &LLP_netPt, "LLP_netPt/F");
 
-  objectTree->Branch("LLP_dR_withCloseTracks", &LLP_dR_withCloseTracks, "LLP_dR_withCloseTracks/D");
-  objectTree->Branch("LLP_PtSum_withCloseTracks", &LLP_PtSum_withCloseTracks, "LLP_PtSum_withCloseTracks/D");
-  objectTree->Branch("LLP_netP_withCloseTracks", &LLP_netP_withCloseTracks, "LLP_netP_withCloseTracks/D");
-  objectTree->Branch("LLP_netPt_withCloseTracks", &LLP_netPt_withCloseTracks, "LLP_netPt_withCloseTracks/D");
+  objectTree->Branch("LLP_dR_withCloseTracks", &LLP_dR_withCloseTracks, "LLP_dR_withCloseTracks/F");
+  objectTree->Branch("LLP_PtSum_withCloseTracks", &LLP_PtSum_withCloseTracks, "LLP_PtSum_withCloseTracks/F");
+  objectTree->Branch("LLP_netP_withCloseTracks", &LLP_netP_withCloseTracks, "LLP_netP_withCloseTracks/F");
+  objectTree->Branch("LLP_netPt_withCloseTracks", &LLP_netPt_withCloseTracks, "LLP_netPt_withCloseTracks/F");
 
-  objectTree->Branch("jets_dR", &jets_dR, "jets_dR/D");
+  objectTree->Branch("jets_dR", &jets_dR, "jets_dR/F");
 
   objectTree->Branch("jets_pt",&jets_pt);
   objectTree->Branch("jets_eta",&jets_eta);

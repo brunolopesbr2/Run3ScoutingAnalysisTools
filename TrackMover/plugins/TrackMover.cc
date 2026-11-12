@@ -272,7 +272,7 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
     }
   }
   reco::BeamSpot::Point onlinePosition(bs.x(), bs.y(), bs.z());
-  reco::BeamSpot* beamspot = new reco::BeamSpot(onlinePosition,
+  auto beamspot = std::make_unique<reco::BeamSpot>(onlinePosition,
 					 bs.sigmaZ(),
 					 bs.dxdz(),
 					 bs.dydz(),
@@ -504,7 +504,16 @@ void TrackMover::produce(edm::Event& iEvent, const edm::EventSetup& iSetup) {
       int nstripHits_min_cut = 1;
       int ntrackerLayers_min_cut = 5;
       if ( !((tracks_iter->pt()>pt_min_cut) && (tracks_iter->hitPattern().numberOfValidPixelHits() > npixelHits_min_cut) && (tracks_iter->hitPattern().numberOfValidStripHits() > nstripHits_min_cut) && (tracks_iter->hitPattern().trackerLayersWithMeasurement() > ntrackerLayers_min_cut) && (fabs(tracks_iter->eta())<2.4)) ) continue;
-
+      bool matchesJet = false;
+      if(pfjetsH.isValid()){
+	for (auto jets_iter = pfjetsH->begin(); jets_iter != pfjetsH->end(); ++jets_iter) {
+	  if (reco::deltaR(tracks_iter->eta(), tracks_iter->phi(), jets_iter->eta(), jets_iter->phi()) < 0.4) {
+	    matchesJet = true;
+	    break;
+	  }
+	}
+      }
+      if(!matchesJet) continue;
       output_tracks->push_back(*tracks_iter);
 
       //If the track, by coindicence, is close to the move vertex, also consider for the TM reweighting

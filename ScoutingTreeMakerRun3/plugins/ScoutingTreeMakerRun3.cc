@@ -1314,7 +1314,8 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
   }
 
   hltHTProxy = hltHTNeutral + ( 0.8 - 0.6*exp(-hltHT/300.0) ) * hltHTCharged;
-
+  //std::cout<<"tree maker neutral HT: "<<hltHTNeutral<<" charged HT: "<<hltHTCharged<<" total ht: "<<hltHT<<std::endl;
+  //std::cout<<"tree maker proxy: "<<hltHTProxy<<std::endl;
 
   // end HT calculation
   // get trigger weights
@@ -1631,6 +1632,16 @@ void ScoutingTreeMakerRun3::analyze(const edm::Event& iEvent, const edm::EventSe
 	edm::Ref<std::vector<reco::Track>> trackRef(ScoutingTrackHandle, i_tk);
 	auto scoutTrack = (*ScoutingTrackRefHandle)[trackRef];
 	if ((scoutingTrackIter->pt()>pt_min_cut) && (scoutingTrackIter->hitPattern().numberOfValidPixelHits() > npixelHits_min_cut) && (scoutingTrackIter->hitPattern().numberOfValidStripHits() > nstripHits_min_cut) && (scoutingTrackIter->hitPattern().trackerLayersWithMeasurement() > ntrackerLayers_min_cut) && (fabs(scoutingTrackIter->eta())<2.4)){
+	  bool matchesJet = false;
+	  if(pfjetsH.isValid()){
+	    for (auto jet: pfJetVector) {
+	      if (reco::deltaR(scoutingTrackIter->eta(), scoutingTrackIter->phi(), jet.eta(), jet.phi()) < 0.4) {
+		matchesJet = true;
+		break;
+	      }
+	    }
+	  }
+	  if(!matchesJet) continue;
 	  reco::TransientTrack transientScoutTrack = tt_builder.build(*scoutingTrackIter);
 	  std::pair<bool, Measurement1D> ttk_transverseDist = IPTools::absoluteTransverseImpactParameter(transientScoutTrack, fake_bs_vtx);
 	  if(ttk_transverseDist.second.significance()>4){

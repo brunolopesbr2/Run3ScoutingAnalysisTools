@@ -105,6 +105,12 @@ options.register('doTrackMoverTree',
                  "Whether to fill the tmTree."
 )
 
+options.register('LLPpdgId',
+                 1000006,
+                 VarParsing.VarParsing.multiplicity.singleton,
+                 VarParsing.VarParsing.varType.int,
+                 "pdgId of LLP used for gen vertices in track mover tree"
+    )
 
 options.parseArguments()
 process.load("FWCore.MessageService.MessageLogger_cfi")
@@ -117,7 +123,7 @@ process.options = cms.untracked.PSet(
 process.MessageLogger.cerr.FwkSummary.reportEvery = 100
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(100) )
 PUCorrectionData = np.load(options.PUFile)
 UncertaintyCorrectionData = np.load(options.UncertaintyCorrectionFile)
 
@@ -130,7 +136,7 @@ process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring(
         #MC test file
         #'/store/mc/RunIII2024Summer24MiniAOD/QCD-4Jets_Bin-HT-1000to1200_TuneCP5_13p6TeV_madgraphMLM-pythia8/MINIAODSIM/140X_mcRun3_2024_realistic_v26-v2/100000/00f7403b-49bf-4efd-9b8f-0398bd61d910.root'
-        #'/store/user/brlopesd/StopStopbarTo2Dbar2D_M-200_CTau-1mm_Summer24_100k_v2/StopStopbarTo2Dbar2D_M-200_CTau-1mm_Summer24_100k_miniAOD_v2/250214_150834/0000/stop_dbar_miniAOD_1.root'
+        '/store/user/brlopesd/StopStopbarTo2Dbar2D_M-200_CTau-1mm_Summer24_100k_v2/StopStopbarTo2Dbar2D_M-200_CTau-1mm_Summer24_100k_miniAOD_v2/250214_150834/0000/stop_dbar_miniAOD_1.root'
         #Data test file
         #'/store/data/Run2024D/ScoutingPFRun3/HLTSCOUT/v1/000/380/945/00000/cdf45723-07c4-4b41-9595-f368f2929369.root'
         #'/store/data/Run2024F/ScoutingPFRun3/HLTSCOUT/v1/000/383/712/00001/b52350ae-ece7-4a25-a821-2dbf34d9c603.root'
@@ -502,7 +508,7 @@ process.scoutingTree = cms.EDAnalyzer('ScoutingTreeMakerRun3',
                                       weightMap = cms.InputTag("triggerFilter", "weightMap"),
                                       val = cms.bool(options.validation),
                                       doTrackMoverTree = cms.bool(options.doTrackMoverTree),
-                                      LLP_pdgId = cms.int32(9000006), #1000006 for stop, 9000006 for the exotic Higgs decay, 5000002 for StealthSUSY
+                                      LLP_pdgId = cms.int32(options.LLPpdgId), #1000006 for stop, 9000006 for the exotic Higgs decay, 5000002 for StealthSUSY
                                       pt_min_cut = cms.double(pt_min_val),
                                       npixelHits_min_cut = cms.int32(npixelHits_min_val),
                                       nstripHits_min_cut = cms.int32(nstripHits_min_val),
@@ -516,14 +522,16 @@ if(options.isMC and options.doJECUnc):
         vertexShiftZMap   = cms.InputTag("VertexerJECup","vtxZShift"),
         vertexShift3DMap  = cms.InputTag("VertexerJECup","vtx3DShift"),
         displacedVertices = cms.InputTag("VertexerJECup"),
-        fillScoutTrack = cms.bool( False )
+        fillScoutTrack = cms.bool( False ),
+        doTrackMoverTree = cms.bool( False )
     )
     process.scoutingTreeJECdown = process.scoutingTree.clone(
         pfjets = cms.InputTag("triggerFilter","pfjetsDown"),
         vertexShiftZMap   = cms.InputTag("VertexerJECdown","vtxZShift"),
         vertexShift3DMap  = cms.InputTag("VertexerJECdown","vtx3DShift"),
         displacedVertices = cms.InputTag("VertexerJECdown"),
-        fillScoutTrack = cms.bool( False )
+        fillScoutTrack = cms.bool( False ),
+        doTrackMoverTree = cms.bool( False )
     )
 
 # Usually it is better to put producers on a task instead of a path

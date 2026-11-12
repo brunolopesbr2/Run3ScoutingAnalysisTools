@@ -372,6 +372,7 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
         }
         if(!passID) continue;
 
+	/*
         bool muonClean = true;
         for (auto muon : selectedMuons) {
             float dEta_jet_mu = jets_iter->eta() - muon->eta();
@@ -382,7 +383,7 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
             } 
         }  
         if(!muonClean) continue;
-
+	*/
         pfJetVector->emplace_back(*jets_iter);
       }
     }//end jet loop
@@ -439,7 +440,7 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
             }
           }
           if(!passID) continue;
-
+	  /*
           bool muonClean = true;
           for (auto muon : selectedMuons) {
               float dEta_jet_mu = jets_iter->eta() - muon->eta();
@@ -450,7 +451,7 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
               } 
           }  
           if(!muonClean) continue;
-
+	  */
           pfJetVector_up->emplace_back(*jets_iter);
         }
       }//end jet loop
@@ -506,7 +507,7 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
             }
           }
           if(!passID) continue;
-
+	  /*
           bool muonClean = true;
           for (auto muon : selectedMuons) {
               float dEta_jet_mu = jets_iter->eta() - muon->eta();
@@ -517,7 +518,7 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
               } 
           }  
           if(!muonClean) continue;
-
+	  */
           pfJetVector_down->emplace_back(*jets_iter);
         }
       }//end jet loop
@@ -527,22 +528,145 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
 
 
   float ht_corrected = 0;
+  float ht_corrected_JEC_up = 0;
+  float ht_corrected_JEC_down = 0;
   float dR_jet_mu;
   bool matches_muon;
-
-//calculate HT based on Tight Jets
+  std::vector<reco::PFJet> selected_jets;
+  std::vector<reco::PFJet> selected_jets_JEC_up;
+  std::vector<reco::PFJet> selected_jets_JEC_down;
+  float hltHTCharged = 0;
+  float hltHTNeutral = 0;
+  float hltHTProxy = 0;
+  float hltHTCharged_JEC_up = 0;
+  float hltHTNeutral_JEC_up = 0;
+  float hltHTProxy_JEC_up = 0;
+  float hltHTCharged_JEC_down = 0;
+  float hltHTNeutral_JEC_down = 0;
+  float hltHTProxy_JEC_down = 0;
+  
+  //calculate HT based on Tight Jets
   for (const auto& jet: *pfJetVector) {
-    if((jet.pt() > 30) && (abs(jet.eta()) < 2.4)){    
+    if((jet.pt() > 30) && (abs(jet.eta()) < 2.5)){    
       matches_muon = false;
       for (auto muon : selectedMuons) {
         dR_jet_mu = reco::deltaR(jet.eta(), jet.phi(), muon->eta(), muon->phi());
         if(dR_jet_mu <= 0.20) matches_muon = true;
       }
-      if(!matches_muon) 
+      if(!matches_muon){
+	selected_jets.push_back(jet);
         ht_corrected = ht_corrected + jet.pt();
+      }
     }
   }
 
+  //charged and neutral components
+  
+  for (auto pfcands_iter = scoutingParticle_collection_handle->begin(); pfcands_iter != scoutingParticle_collection_handle->end(); ++pfcands_iter) {
+    bool matches_jet = false;
+    for(auto jet: selected_jets){
+      float cand_jet_dR = reco::deltaR(pfcands_iter->eta(), pfcands_iter->phi(), jet.eta(), jet.phi());
+      if(cand_jet_dR < 0.4){
+        matches_jet = true;
+        goto done_check_match;
+      }
+    }
+    done_check_match:
+
+    if(matches_jet){
+      if(abs(pfcands_iter->pdgId()) == 211 || abs(pfcands_iter->pdgId()) == 11 || abs(pfcands_iter->pdgId()) == 13){
+        hltHTCharged = hltHTCharged + pfcands_iter->pt();
+      }
+      else{
+        hltHTNeutral = hltHTNeutral + pfcands_iter->pt();
+      }
+    }
+  }
+  
+  hltHTProxy = hltHTNeutral + ( 0.8 - 0.6*exp(-ht_corrected/300.0) ) * hltHTCharged;
+  if(isMC && doJECUnc){
+    //calculate HT based on Tight Jets JEC up
+    for (const auto& jet: *pfJetVector_up) {
+      if((jet.pt() > 30) && (abs(jet.eta()) < 2.5)){    
+	matches_muon = false;
+	for (auto muon : selectedMuons) {
+	  dR_jet_mu = reco::deltaR(jet.eta(), jet.phi(), muon->eta(), muon->phi());
+	  if(dR_jet_mu <= 0.20) matches_muon = true;
+	}
+	if(!matches_muon){
+	  selected_jets_JEC_up.push_back(jet);
+	  ht_corrected_JEC_up = ht_corrected_JEC_up + jet.pt();
+	}
+      }
+    }
+    
+    //charged and neutral components JEC up
+    
+    for (auto pfcands_iter = scoutingParticle_collection_handle->begin(); pfcands_iter != scoutingParticle_collection_handle->end(); ++pfcands_iter) {
+      bool matches_jet = false;
+      for(auto jet: selected_jets_JEC_up){
+	float cand_jet_dR = reco::deltaR(pfcands_iter->eta(), pfcands_iter->phi(), jet.eta(), jet.phi());
+	if(cand_jet_dR < 0.4){
+	  matches_jet = true;
+	  goto done_check_match_JEC_up;
+	}
+      }
+      done_check_match_JEC_up:
+      
+      if(matches_jet){
+	if(abs(pfcands_iter->pdgId()) == 211 || abs(pfcands_iter->pdgId()) == 11 || abs(pfcands_iter->pdgId()) == 13){
+	  hltHTCharged_JEC_up = hltHTCharged_JEC_up + pfcands_iter->pt();
+	}
+	else{
+	  hltHTNeutral_JEC_up = hltHTNeutral_JEC_up + pfcands_iter->pt();
+	}
+      }
+    }
+    
+    hltHTProxy_JEC_up = hltHTNeutral_JEC_up + ( 0.8 - 0.6*exp(-ht_corrected_JEC_up/300.0) ) * hltHTCharged_JEC_up;
+    
+    //calculate HT based on Tight Jets JEC down
+    for (const auto& jet: *pfJetVector_down) {
+      if((jet.pt() > 30) && (abs(jet.eta()) < 2.5)){    
+	matches_muon = false;
+	for (auto muon : selectedMuons) {
+	  dR_jet_mu = reco::deltaR(jet.eta(), jet.phi(), muon->eta(), muon->phi());
+	  if(dR_jet_mu <= 0.20) matches_muon = true;
+	}
+	if(!matches_muon){
+	  selected_jets_JEC_down.push_back(jet);
+	  ht_corrected_JEC_down = ht_corrected_JEC_down + jet.pt();
+	}
+      }
+    }
+    
+    //charged and neutral components JEC down
+    
+    for (auto pfcands_iter = scoutingParticle_collection_handle->begin(); pfcands_iter != scoutingParticle_collection_handle->end(); ++pfcands_iter) {
+      bool matches_jet = false;
+      for(auto jet: selected_jets_JEC_down){
+	float cand_jet_dR = reco::deltaR(pfcands_iter->eta(), pfcands_iter->phi(), jet.eta(), jet.phi());
+	if(cand_jet_dR < 0.4){
+	  matches_jet = true;
+	  goto done_check_match_JEC_down;
+	}
+      }
+      done_check_match_JEC_down:
+
+      if(matches_jet){
+	if(abs(pfcands_iter->pdgId()) == 211 || abs(pfcands_iter->pdgId()) == 11 || abs(pfcands_iter->pdgId()) == 13){
+	  hltHTCharged_JEC_down = hltHTCharged_JEC_down + pfcands_iter->pt();
+	}
+	else{
+	  hltHTNeutral_JEC_down = hltHTNeutral_JEC_down + pfcands_iter->pt();
+	}
+      }
+    }
+  
+    hltHTProxy_JEC_down = hltHTNeutral_JEC_down + ( 0.8 - 0.6*exp(-ht_corrected_JEC_down/300.0) ) * hltHTCharged_JEC_down;
+  }
+  //std::cout<<"filter neutral HT: "<<hltHTNeutral<<" charged HT: "<<hltHTCharged<<" total ht: "<<ht_corrected<<std::endl;
+  //std::cout<<"filter HT proxy: "<<hltHTProxy<<" up: "<<hltHTProxy_JEC_up<<" down: "<<hltHTProxy_JEC_down<<std::endl;
   // end HT calculation
   // get trigger weights
 
@@ -669,7 +793,7 @@ TriggerFilter::filter(edm::Event& iEvent, const edm::EventSetup& iSetup)
     }
   }
 
-  passFilter = passFilter && passHTFilter;
+  passFilter = passFilter && passHTFilter && ((hltHTProxy>400) || (hltHTProxy_JEC_up>400) || (hltHTProxy_JEC_down>400));
   if(passFilter){
     h_genWeights->Fill("HTFilter",genWeight);
     h_weights->Fill("HTFilter",theWeight);
